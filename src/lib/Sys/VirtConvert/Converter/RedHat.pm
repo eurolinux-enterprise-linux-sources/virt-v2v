@@ -110,12 +110,13 @@ sub convert
 {
     my $class = shift;
 
-    my ($g, $root, $config, $desc, $meta) = @_;
+    my ($g, $root, $config, $desc, $meta, $options) = @_;
     croak("convert called without g argument") unless defined($g);
     croak("convert called without root argument") unless defined($root);
     croak("convert called without config argument") unless defined($config);
     croak("convert called without desc argument") unless defined($desc);
     croak("convert called without meta argument") unless defined($meta);
+    croak("convert called without options argument") unless defined($options);
 
     _init_grub($g, $root, $desc);
     my $grub_conf = $desc->{boot}->{grub_conf};
@@ -123,6 +124,8 @@ sub convert
     _init_selinux($g);
     _init_augeas($g, $grub_conf);
     _init_kernels($g, $desc);
+
+    _clean_rpmdb($g);
 
     # Un-configure HV specific attributes which don't require a direct
     # replacement
@@ -140,7 +143,9 @@ sub convert
     }
 
     # Configure the rest of the system
-    _configure_console($g, $grub_conf);
+    my $remove_serial_console = exists($options->{NO_SERIAL_CONSOLE});
+    _configure_console($g, $grub_conf, $remove_serial_console);
+
     _configure_display_driver($g, $config, $meta, $desc);
     _remap_block_devices($meta, $virtio, $g, $desc);
     _configure_kernel_modules($g, $virtio);
@@ -360,9 +365,12 @@ sub _configure_kernel_modules
 # /dev/hvc0, so ideally we would just leave it alone. However, RHEL 6 libvirt
 # doesn't yet support this device so we can't attach to it. We therefore use
 # /dev/ttyS0 for RHEL 6 anyway.
+#
+# If the target doesn't support a serial console, we want to remove all
+# references to it instead.
 sub _configure_console
 {
-    my ($g, $grub_conf) = @_;
+    my ($g, $grub_conf, $remove) = @_;
 
     # Look for gettys which use xvc0 or hvc0
     # RHEL 6 doesn't use /etc/inittab, but this doesn't hurt
@@ -371,8 +379,16 @@ sub _configure_console
 
         # If the process mentions xvc0, change it to ttyS0
         if ($proc =~ /\b(x|h)vc0\b/) {
-            $proc =~ s/\b(x|h)vc0\b/ttyS0/g;
-            $g->aug_set($augpath, $proc);
+            if ($remove) {
+                $g->aug_rm($augpath.'/..');
+            } else {
+                $proc =~ s/\b(x|h)vc0\b/ttyS0/g;
+                $g->aug_set($augpath, $proc);
+            }
+        }
+
+        if ($remove && $proc =~ /\bttyS0\b/) {
+            $g->aug_rm($augpath.'/..');
         }
     }
 
@@ -381,7 +397,15 @@ sub _configure_console
         my $tty = $g->aug_get($augpath);
 
         if($tty eq "xvc0" || $tty eq "hvc0") {
-            $g->aug_set($augpath, 'ttyS0');
+            if ($remove) {
+                $g->aug_set($augpath, 'ttyS0');
+            } else {
+                $g->aug_rm($augpath);
+            }
+        }
+
+        if ($remove && $tty eq 'ttyS0') {
+            $g->aug_rm($augpath);
         }
     }
 
@@ -391,8 +415,16 @@ sub _configure_console
     {
         my $console = $g->aug_get($augpath);
         if ($console =~ /\b(x|h)vc0\b/) {
-            $console =~ s/\b(x|h)vc0\b/ttyS0/g;
-            $g->aug_set($augpath, $console);
+            if ($remove) {
+                $g->aug_rm($augpath);
+            } else {
+                $console =~ s/\b(x|h)vc0\b/ttyS0/g;
+                $g->aug_set($augpath, $console);
+            }
+        }
+
+        if ($remove && $console =~ /\bttyS0\b/) {
+            $g->aug_rm($augpath);
         }
     }
 
@@ -603,7 +635,7 @@ sub _init_kernels
                                     $kernel->{version});
             } else {
                 warn __x("Grub entry {title} does not specify an ".
-                         "initrd", title => $config{title});
+                         "initrd\n", title => $config{title});
             }
 
             push(@configs, \%config);
@@ -617,6 +649,18 @@ sub _init_kernels
 
         # Add the default configuration
         eval { $boot->{default} = $g->aug_get("/files$grub_conf/default") };
+    }
+}
+
+# If the guest was shutdown uncleanly, it's possible that transient state was
+# left lying around in the rpm database. Given we know that nothing is using the
+# rpmdb at this point, it's safe to delete these files.
+sub _clean_rpmdb
+{
+    my $g = shift;
+
+    foreach my $f ($g->glob_expand('/var/lib/rpm/__db.00?')) {
+        $g->rm($f);
     }
 }
 
@@ -637,7 +681,7 @@ sub _inspect_initrd
         unless ($@) {
             @modules = grep { m{([^/]+)\.(?:ko|o)$} } @modules;
         } else {
-            warn __x("{filename}: could not read initrd format",
+            warn __x("{filename}: could not read initrd format\n",
                      filename => "$path");
         }
     }
@@ -688,7 +732,7 @@ sub _inspect_linux_kernel
             # Check /lib/modules/$version exists
             if(!$g->is_dir("/lib/modules/$version")) {
                 warn __x("Didn't find modules directory {modules} for kernel ".
-                         "{path}", modules => "/lib/modules/$version",
+                         "{path}\n", modules => "/lib/modules/$version",
                          path => $path);
 
                 # Give up
@@ -696,7 +740,7 @@ sub _inspect_linux_kernel
             }
         } else {
             warn __x("Couldn't guess kernel version number from path for ".
-                     "kernel {path}", path => $path);
+                     "kernel {path}\n", path => $path);
 
             # Give up
             return undef;
@@ -875,6 +919,7 @@ sub _unconfigure_hv
     my @apps = $g->inspect_list_applications($root);
 
     _unconfigure_xen($g, $desc, \@apps);
+    _unconfigure_vbox($g, $desc, \@apps);
     _unconfigure_vmware($g, $desc, \@apps);
 }
 
@@ -935,6 +980,50 @@ sub _unconfigure_xen
             }
 
             $g->write_file('/etc/rc.local', join("\n", @rc_local)."\n", $size);
+        }
+    }
+}
+
+# Unconfigure VirtualBox specific guest modifications
+sub _unconfigure_vbox
+{
+    my ($g, $desc, $apps) = @_;
+
+    # Uninstall VirtualBox Guest Additions
+    my @remove;
+    foreach my $app (@$apps) {
+        my $name = $app->{app_name};
+
+        if ($name eq "virtualbox-guest-additions") {
+            push(@remove, $name);
+        }
+    }
+    _remove_applications($g, @remove);
+
+    # VirtualBox Guest Additions may have been installed from tarball, in which
+    # case the above won't detect it. Look for the uninstall tool, and run it
+    # if it's present.
+    #
+    # Note that it's important we do this early in the conversion process, as
+    # this uninstallation script naively overwrites configuration files with
+    # versions it cached prior to installation.
+    my $vboxconfig = '/var/lib/VBoxGuestAdditions/config';
+    if ($g->exists($vboxconfig)) {
+        my $vboxuninstall;
+        foreach (split /\n/, $g->cat($vboxconfig)) {
+            if ($_ =~ /^INSTALL_DIR=(.*$)/) {
+                $vboxuninstall = $1 . '/uninstall.sh';
+            }
+        }
+        if ($g->exists($vboxuninstall)) {
+            eval { $g->command([$vboxuninstall]) };
+            logmsg WARN, __x('VirtualBox Guest Additions were detected, but '.
+                             'uninstallation failed. The error message was: '.
+                             '{error}', error => $@) if $@;
+
+            # Reload augeas to detect changes made by vbox tools uninstallation
+            eval { $g->aug_load() };
+            augeas_error($g, $@) if $@;
         }
     }
 }
@@ -1218,6 +1307,10 @@ sub _net_run {
 
     my $resolv_bak = $g->exists('/etc/resolv.conf');
     $g->mv('/etc/resolv.conf', '/etc/resolv.conf.v2vtmp') if ($resolv_bak);
+
+    # XXX We should get the nameserver from the appliance here, but
+    # there's no current api other than debug to do this.
+    $g->write_file('/etc/resolv.conf', "nameserver 169.254.2.3", 0);
 
     eval &$sub();
     my $err = $@;
@@ -2292,7 +2385,7 @@ sub _supports_virtio
 
 =head1 COPYRIGHT
 
-Copyright (C) 2009-2011 Red Hat Inc.
+Copyright (C) 2009-2012 Red Hat Inc.
 
 =head1 LICENSE
 

@@ -1,5 +1,5 @@
 # Sys::VirtConvert::Connection::LibVirt
-# Copyright (C) 2009-2011 Red Hat Inc.
+# Copyright (C) 2009-2012 Red Hat Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,18 @@ use Sys::VirtConvert::Transfer::Local;
 use Sys::VirtConvert::Util;
 
 use Locale::TextDomain 'virt-v2v';
+
+# As of writing (20/09/2012), libvirt supports 10 pool types. Of these, only th
+# 3 below use the format element of a volume to indicate the on-disk data
+# format. 6 don't support the format element at all, and 1 other, disk,
+# overloads it to mean partition type.
+# All pool types other than the 3 below effectively only support raw.
+our %format_pools = (
+    dir => 1,
+    fs => 1,
+    netfs => 1
+);
+
 
 =pod
 
@@ -230,7 +242,7 @@ sub _node_val
 
 =head1 COPYRIGHT
 
-Copyright (C) 2009-2011 Red Hat Inc.
+Copyright (C) 2009-2012 Red Hat Inc.
 
 =head1 LICENSE
 

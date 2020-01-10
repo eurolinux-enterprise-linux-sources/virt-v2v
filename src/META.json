@@ -4,7 +4,7 @@
       "Matthew Booth <mbooth@redhat.com>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120351",
+   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "open_source"
    ],
@@ -23,7 +23,7 @@
    "provides" : {
       "Sys::VirtConvert" : {
          "file" : "lib/Sys/VirtConvert.pm",
-         "version" : "v0.8.7"
+         "version" : "v0.8.9"
       },
       "Sys::VirtConvert::Config" : {
          "file" : "lib/Sys/VirtConvert/Config.pm",
@@ -165,5 +165,5 @@
       },
       "x_MailingList" : "http://www.redhat.com/mailman/listinfo/libguestfs"
    },
-   "version" : "v0.8.7"
+   "version" : "v0.8.9"
 }

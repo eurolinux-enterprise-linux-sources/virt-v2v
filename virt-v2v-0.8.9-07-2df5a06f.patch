@@ -1,0 +1,24 @@
+commit 2c0e838af1df8691f2db74c725f8ab7a1e7d6eae
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Mon Oct 22 15:51:34 2012 +0100
+
+    libvirtxml guest format conversion fails with guestfs launch failure
+    
+    Fixes RHBZ#868405
+    (cherry picked from commit 2df5a06f5b9683e1f43bb47a64d1d239d08118ed)
+
+diff --git a/lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm b/lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm
+index 2a8ccad..e9ce40f 100644
+--- a/lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm
++++ b/lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm
+@@ -174,8 +174,8 @@ sub get_volume
+         $is_sparse = $usage < $size ? 1 : 0;
+     }
+ 
+-    my $transfer = new Sys::VirtConvert::Transfer::Local($path, $format,
+-                                                         $is_sparse);
++    my $transfer = new Sys::VirtConvert::Transfer::Local($path, $is_block,
++                                                         $format, $is_sparse);
+ 
+     return new Sys::VirtConvert::Connection::Volume($name, $format, $path,
+                                                     $size, $usage,

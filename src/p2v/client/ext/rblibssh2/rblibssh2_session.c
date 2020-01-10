@@ -143,16 +143,30 @@ void *rblibssh2_session_runthread(struct session *s,
     /* Wait for a byte from the signal pipe, ensuring we allow other ruby
      * threads to run while we wait */
     for (;;) {
+#ifdef HAVE_RB_THREAD_FD_SELECT
+        rb_fdset_t fds;
+        rb_fd_init(&fds);
+        rb_fd_set(signal[0], &fds);
+#else
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(signal[0], &fds);
+#endif /* HAVE_RB_THREAD_FD_SELECT */
 
         int rc;
         if (cb) {
             struct timeval tv_c = *tv;
+#ifdef HAVE_RB_THREAD_FD_SELECT
+            rc = rb_thread_fd_select(signal[0] + 1, &fds, NULL, NULL, &tv_c);
+#else
             rc = rb_thread_select(signal[0] + 1, &fds, NULL, NULL, &tv_c);
+#endif
         } else {
+#ifdef HAVE_RB_THREAD_FD_SELECT
+            rc = rb_thread_fd_select(signal[0] + 1, &fds, NULL, NULL, NULL);
+#else
             rc = rb_thread_select(signal[0] + 1, &fds, NULL, NULL, NULL);
+#endif
         }
 
         /* Timeout, call the registered callback */
@@ -183,8 +197,9 @@ void *rblibssh2_session_runthread(struct session *s,
     close(signal[0]);
     close(signal[1]);
 
-    void *result;
-    if (pthread_join(s->thread, &result) < 0) {
+    void *result = NULL;
+    errno = pthread_join(s->thread, &result);
+    if (errno < 0) {
         s->running = 0;
         rb_sys_fail("Failed to join worker thread");
     }
@@ -239,34 +254,6 @@ void rblibssh2_session_channel_remove(struct session *s, VALUE channel)
 
     xfree(*n);
     *n = NULL;
-}
-
-/* Taken from http://www.libssh2.org/examples/ssh2_exec.html (waitsocket) */
-int rblibssh2_session_wait(struct session *s)
-{
-    struct timeval timeout;
-    fd_set fd;
-    fd_set *writefd = NULL;
-    fd_set *readfd = NULL;
-    int dir;
-
-    timeout.tv_sec = 10;
-    timeout.tv_usec = 0;
-
-    FD_ZERO(&fd);
-
-    FD_SET(s->sock, &fd);
-
-    /* now make sure we wait in the correct direction */
-    dir = libssh2_session_block_directions(s->session);
-
-    if(dir & LIBSSH2_SESSION_BLOCK_INBOUND)
-        readfd = &fd;
-
-    if(dir & LIBSSH2_SESSION_BLOCK_OUTBOUND)
-        writefd = &fd;
-
-    return select(s->sock + 1, readfd, writefd, NULL, &timeout);
 }
 
 static void session_free(void *arg) {
@@ -397,10 +384,6 @@ static void *libssh2_connect_w(void *arg)
         }
         return NULL;
     }
-
-    /* We need the session to be non-blocking so we can detect data on stderr
-     * while we're waiting on data from stdout. */
-    libssh2_session_set_blocking(s->session, 0);
 
     return s;
 }

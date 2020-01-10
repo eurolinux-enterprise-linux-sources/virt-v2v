@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # virt-p2v-server
-# Copyright (C) 2011 Red Hat Inc.
+# Copyright (C) 2012 Red Hat Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -158,6 +158,10 @@ eval {
             eval { $meta = Load($yaml); };
             die('Error parsing metadata: '.$@."\n") if $@;
 
+            # Fixup missing metadata. We do this here to avoid making
+            # unnecessary changes to the client->server metadata.
+            $meta->{src_type} = 'physical';
+
             p2v_return_ok();
         }
 
@@ -266,7 +270,6 @@ sub receive_path
     # We only support RAW container
     my $ctype = $msg->{args}[0];
     die("Received unknown container type: $ctype\n") unless $ctype eq CONT_RAW;
-    p2v_return_ok();
 
     # Update the disk entry with the new volume details
     $disk->{local_path} = $vol->get_local_path();
@@ -274,6 +277,7 @@ sub receive_path
     $disk->{is_block} = $vol->is_block();
 
     my $writer = $vol->get_write_stream($convert);
+    p2v_return_ok();
 
     # Receive volume data in chunks
     my $received = 0;
@@ -359,9 +363,15 @@ sub convert
             $transferdev = pop(@devices);
         }
 
+        my %options;
+        if ($config->get_method() eq 'rhev') {
+            $options{NO_SERIAL_CONSOLE} = 1;
+        }
+
         my $root = inspect_guest($g, $transferdev);
         my $guestcaps =
-            Sys::VirtConvert::Converter->convert($g, $config, $root, $meta);
+            Sys::VirtConvert::Converter->convert($g, $config, $root, $meta,
+                                                 \%options);
         $target->create_guest($g, $root, $meta, $config, $guestcaps,
                               $meta->{name});
 
@@ -396,7 +406,8 @@ sub convert
 
 sub unexpected_msg
 {
-    die('Received unexpected command: '.shift."\n");
+    my $msg = shift;
+    die("Received unexpected command: $msg\n");
 }
 
 sub unexpected_close
@@ -488,8 +499,8 @@ sub p2v_read
     my $total = 0;
 
     while($total < $length) {
-        my $in = read(STDIN, $buf, $length, $total)
-            or die(__x("Error receiving data: {error}\n", error => $@));
+        my $in = read(STDIN, $buf, $length, $total);
+        die(__x("Unexpected EOF while receiving data.\n")) if $in == 0;
         logmsg DEBUG, "Read $in bytes";
         $total += $in;
     }
@@ -518,7 +529,8 @@ sub p2v_return_list
 
 sub p2v_return_err
 {
-    my $msg = 'ERROR '.shift;
+    my $msg = shift;
+    $msg = "ERROR $msg";
     logmsg DEBUG, __x('Sent: {msg}', msg => $msg);
     print $msg,"\n";
 }
@@ -534,7 +546,7 @@ Matthew Booth <mbooth@redhat.com>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2011 Red Hat Inc.
+Copyright (C) 2012 Red Hat Inc.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

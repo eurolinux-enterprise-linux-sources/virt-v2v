@@ -16,7 +16,11 @@
  */
 
 #include <ruby.h>
+#ifdef HAVE_RUBYIO_H
 #include <rubyio.h>
+#elif HAVE_RUBY_IO_H
+#include <ruby/io.h>
+#endif
 
 #include <aio.h>
 #include <unistd.h>
@@ -86,37 +90,21 @@ static void *session_exec_w(void *params)
     struct channel *c = se->c;
 
     LIBSSH2_SESSION *session = rblibssh2_session_get(c->s);
-
-    for (;;) {
-        c->channel = libssh2_channel_open_session(session);
-        if (c->channel == NULL) {
-            char *err;
-            if (libssh2_session_last_error(session, &err, NULL, 0) ==
-                LIBSSH2_ERROR_EAGAIN)
-            {
-                rblibssh2_session_wait(c->s);
-                continue;
-            } else {
-                rblibssh2_session_set_error(rb_eIOError,
-                        "Failed to open channel: %s", err);
-                return NULL;
-            }
-        }
-        break;
+    c->channel = libssh2_channel_open_session(session);
+    if (c->channel == NULL) {
+        char *err;
+        int ssh_errno = libssh2_session_last_error(session, &err, NULL, 0);
+        rblibssh2_session_set_error(rb_eIOError,
+                "Failed to open channel: %s(%i)", err, ssh_errno);
+        return NULL;
     }
 
-    int rc;
-    while ((rc = libssh2_channel_exec(c->channel, se->cmd)) ==
-        LIBSSH2_ERROR_EAGAIN)
-    {
-        rblibssh2_session_wait(c->s);
-    }
-
+    int rc = libssh2_channel_exec(c->channel, se->cmd);
     if (rc != 0) {
         char *err;
         libssh2_session_last_error(session, &err, NULL, 0);
         rblibssh2_session_set_error(rb_eIOError,
-                "Failed to exec %s: %s", se->cmd, err);
+                "Failed to exec %s: %s(%i)", se->cmd, err, rc);
         return NULL;
     }
 
@@ -145,7 +133,7 @@ static VALUE session_exec(VALUE self_rv, VALUE cmd_rv)
         .cmd = StringValueCStr(cmd_rv)
     };
 
-    rblibssh2_session_runthread(s, session_exec_w, &p, xfree, NULL, NULL, NULL);
+    rblibssh2_session_runthread(s, session_exec_w, &p, NULL, NULL, NULL, NULL);
 
     return channel_rv;
 }
@@ -168,15 +156,31 @@ static void *channel_read_w(void *params)
     struct channel_data *cd = (struct channel_data *) params;
     struct channel *c = cd->c;
 
-    for (;;) {
-        char errbuf[1024];
-        ssize_t l;
+    char errbuf[1024];
+    ssize_t l;
 
-        l = libssh2_channel_read_stderr(c->channel, errbuf, sizeof(errbuf));
+    #define _ERR "Remote error in channel_read: "
+    l = strlen(_ERR);
+    memcpy(errbuf, _ERR, l);
+    #undef _ERR
+
+    char *err;
+    LIBSSH2_SESSION *session = rblibssh2_session_get(c->s);
+
+    for (;;) {
+        /* Don't block waiting for stderr */
+        libssh2_session_set_blocking(session, 0);
+        l = libssh2_channel_read_stderr(c->channel,
+                                        &errbuf[l], sizeof(errbuf) - l);
+        libssh2_session_set_blocking(session, 1);
+
         if (l == LIBSSH2_ERROR_EAGAIN || l == 0) {
             /* Nothing, fall through */
         } else if (l < 0) {
-            goto error;
+            libssh2_session_last_error(session, &err, NULL, 0);
+            rblibssh2_session_set_error(rb_eIOError,
+                "Error reading from stderr in channel_read: %s(%i)", err, l);
+            return NULL;
         } else {
             if (l < sizeof(errbuf)) {
                 errbuf[l] = '\0';
@@ -188,13 +192,15 @@ static void *channel_read_w(void *params)
         }
 
         l = libssh2_channel_read(c->channel, cd->data, cd->len);
-        if (l == LIBSSH2_ERROR_EAGAIN) {
-            rblibssh2_session_wait(c->s);
-        } else if (l < 0) {
-            goto error;
+        if (l < 0) {
+            libssh2_session_last_error(session, &err, NULL, 0);
+            rblibssh2_session_set_error(rb_eIOError,
+                "Error reading from channel in channel_read: %s(%i)", err, l);
+            return NULL;
         } else if (l == 0) {
             if (libssh2_channel_eof(c->channel)) {
-                rblibssh2_session_set_error(rb_eIOError, "Unexpected EOF");
+                rblibssh2_session_set_error(rb_eIOError,
+                        "Unexpected EOF on channel in channel_read");
                 return NULL;
             }
             /* Can't think of any other reason we'd get a zero-length return,
@@ -206,13 +212,6 @@ static void *channel_read_w(void *params)
     }
 
     return cd;
-
-    char *err;
-error:
-    libssh2_session_last_error(rblibssh2_session_get(c->s), &err, NULL, 0);
-    rblibssh2_session_set_error(rb_eIOError,
-            "Error reading from channel: %s", err);
-    return NULL;
 }
 
 static VALUE channel_read(VALUE self_rv, VALUE bytes_rv)
@@ -245,17 +244,33 @@ static void *channel_write_w(void *params)
 {
     struct channel_data *cd = (struct channel_data *)params;
     struct channel *c = cd->c;
+    LIBSSH2_SESSION *session = rblibssh2_session_get(c->s);
 
     size_t written = 0;
-    while (written < cd->len) {
-        char errbuf[1024];
-        ssize_t l;
 
-        l = libssh2_channel_read_stderr(c->channel, errbuf, sizeof(errbuf));
+    char errbuf[1024];
+    ssize_t l;
+
+    #define _ERR "Remote error in channel_write: "
+    l = strlen(_ERR);
+    memcpy(errbuf, _ERR, l);
+    #undef _ERR
+
+    while (written < cd->len) {
+        /* Don't block reading from stderr */
+        libssh2_session_set_blocking(session, 0);
+        l = libssh2_channel_read_stderr(c->channel,
+                                        &errbuf[l], sizeof(errbuf) - 1);
+        libssh2_session_set_blocking(session, 1);
+
         if (l == LIBSSH2_ERROR_EAGAIN || l == 0) {
             /* Nothing, fall through */
         } else if (l < 0) {
-            goto error;
+            char *err;
+            libssh2_session_last_error(session, &err, NULL, 0);
+            rblibssh2_session_set_error(rb_eIOError,
+                "Error reading from stderr in channel_write: %s(%i)", err, l);
+            return NULL;
         } else {
             if (l < sizeof(errbuf)) {
                 errbuf[l] = '\0';
@@ -267,10 +282,12 @@ static void *channel_write_w(void *params)
         }
 
         l = libssh2_channel_write(c->channel, cd->data, cd->len);
-        if (l == LIBSSH2_ERROR_EAGAIN) {
-            rblibssh2_session_wait(c->s);
-        } else if (l < 0) {
-            goto error;
+        if (l < 0) {
+            char *err;
+            libssh2_session_last_error(session, &err, NULL, 0);
+            rblibssh2_session_set_error(rb_eIOError,
+                "Error writing to channel in channel_write: %s(%i)", err, l);
+            return NULL;
         } else {
             written += l;
         }
@@ -278,13 +295,6 @@ static void *channel_write_w(void *params)
     libssh2_channel_flush(c->channel);
 
     return cd;
-
-    char *err;
-error:
-    libssh2_session_last_error(rblibssh2_session_get(c->s), &err, NULL, 0);
-    rblibssh2_session_set_error(rb_eIOError,
-            "Error writing to channel: %s", err);
-    return NULL;
 }
 
 static VALUE channel_write(VALUE self_rv, VALUE data_rv)
@@ -329,7 +339,8 @@ static void *channel_send_data_w(void *params)
         if (in == 0) {
             break;
         } else if (in < 0) {
-            rblibssh2_session_set_error(rb_eIOError, "Error reading data: %m");
+            rblibssh2_session_set_error(rb_eIOError,
+                                        "Error reading data in send_data: %m");
             return NULL;
         }
 
@@ -337,14 +348,14 @@ static void *channel_send_data_w(void *params)
         while (sent < in) {
             ssize_t out = libssh2_channel_write(c->channel, &buf[sent],
                                                 in - sent);
-            if (out == LIBSSH2_ERROR_EAGAIN) {
-                rblibssh2_session_wait(c->s);
-            } else if (out < 0) {
-                char *err;
+            if (out < 0) {
                 LIBSSH2_SESSION *session = rblibssh2_session_get(c->s);
+
+                char *err;
                 libssh2_session_last_error(session, &err, NULL, 0);
                 rblibssh2_session_set_error(rb_eIOError,
-                        "Error writing to channel: %s", err);
+                        "Error writing to channel in send_data: %s(%i)",
+                        err, out);
                 return NULL;
             } else {
                 sent += out;
@@ -387,7 +398,11 @@ static VALUE channel_send_data(VALUE self_rv, VALUE io_rv)
 
     struct channel_send_data *csd = xmalloc(sizeof(*csd));
     csd->c = c;
+#ifdef HAVE_STRUCT_RB_IO_T_F
     csd->fd = fileno(io->f);
+#elif HAVE_STRUCT_RB_IO_T_FD
+    csd->fd = io->fd;
+#endif
     csd->sent = 0;
 
     int rc;
@@ -415,46 +430,38 @@ static VALUE channel_send_data(VALUE self_rv, VALUE io_rv)
 static void *channel_close_w(void *arg)
 {
     struct channel *c = (struct channel *) arg;
+    LIBSSH2_SESSION *session = rblibssh2_session_get(c->s);
 
-    int rc;
-
-    while ((rc = libssh2_channel_send_eof(c->channel)) == LIBSSH2_ERROR_EAGAIN)
-        rblibssh2_session_wait(c->s);
+    int rc = libssh2_channel_send_eof(c->channel);
     if (rc != 0) {
         char *err;
-        libssh2_session_last_error(rblibssh2_session_get(c->s), &err, NULL, 0);
+        libssh2_session_last_error(session, &err, NULL, 0);
         rblibssh2_session_set_error(rb_eIOError,
-                "Error sending EOF: %s", err);
+                "Error sending EOF: %s(%i)", err, rc);
     }
 
-    while ((rc = libssh2_channel_wait_eof(c->channel)) == LIBSSH2_ERROR_EAGAIN)
-        rblibssh2_session_wait(c->s);
+    rc = libssh2_channel_wait_eof(c->channel);
     if (rc != 0) {
         char *err;
-        libssh2_session_last_error(rblibssh2_session_get(c->s), &err, NULL, 0);
+        libssh2_session_last_error(session, &err, NULL, 0);
         rblibssh2_session_set_error(rb_eIOError,
-                "Error waiting for EOF ack: %s", err);
+                "Error waiting for EOF ack: %s(%i)", err, rc);
     }
 
-    while ((rc = libssh2_channel_close(c->channel)) == LIBSSH2_ERROR_EAGAIN)
-        rblibssh2_session_wait(c->s);
+    rc = libssh2_channel_close(c->channel);
     if (rc != 0) {
         char *err;
-        libssh2_session_last_error(rblibssh2_session_get(c->s), &err, NULL, 0);
+        libssh2_session_last_error(session, &err, NULL, 0);
         rblibssh2_session_set_error(rb_eIOError,
-                "Error closing channel client side: %s", err);
+                "Error closing channel client side: %s(%i)", err, rc);
     }
 
-    while ((rc = libssh2_channel_wait_closed(c->channel)) ==
-           LIBSSH2_ERROR_EAGAIN)
-    {
-        rblibssh2_session_wait(c->s);
-    }
+    rc = libssh2_channel_wait_closed(c->channel);
     if (rc != 0) {
         char *err;
-        libssh2_session_last_error(rblibssh2_session_get(c->s), &err, NULL, 0);
+        libssh2_session_last_error(session, &err, NULL, 0);
         rblibssh2_session_set_error(rb_eIOError,
-                 "Error closing channel server side: %s", err);
+                 "Error closing channel server side: %s(%i)", err, rc);
     }
 
     rblibssh2_session_channel_remove(c->s, c->rv);

@@ -1,6 +1,6 @@
 Name:           virt-v2v
-Version:        0.8.7
-Release:        7%{?dist}%{?extra_release}
+Version:        0.8.9
+Release:        2%{?dist}%{?extra_release}
 Summary:        Convert a virtual machine to run on KVM
 
 Group:          Applications/System
@@ -22,24 +22,29 @@ Source1:        RHEV-Application_Provisioning_Tool_46267.exe
 #  local seq no: the order the patches should be applied in
 #  git commit:   the first 8 characters of the git commit hash
 
-# Fix warning when starting virt-p2v-server
-Patch0:         virt-v2v-0.8.7-00-140a26a2.patch
+# Don't warn on unknown floppy devices (RHBZ#794680)
+Patch0:		virt-v2v-0.8.9-00-6924a592.patch
 
-# Fix DNS in _net_run()
-Patch1:         virt-v2v-0.8.7-01-ce8aba51.patch
+# Fix all libvirt volumes being marked as raw
+Patch1:		virt-v2v-0.8.9-01-12964120.patch
 
-# p2v-server: Check write stream opens before returning OK for CONTAINER
-Patch2:         virt-v2v-0.8.7-02-fd521256.patch
+# Create disks with cache=none (RHBZ#838057)
+Patch2:		virt-v2v-0.8.9-02-d907c8a2.patch
 
-# Disable serial console when converting to RHEV
-Patch3:         virt-v2v-0.8.7-03-dc022b7a.patch
+# windows: Fix creation of /Temp/V2V directory
+Patch3:         virt-v2v-0.8.9-03-06f8b55e.patch
 
-# p2v-server: Don't enable DEBUG logging by default
-Patch4:         virt-v2v-0.8.7-04-630e0711.patch
+# Fix regression introduced by b41ff38efcf8525d2b335a4870607eb40d78c6c4
+Patch4:         virt-v2v-0.8.9-04-ea855d87.patch
 
-# rhev: Ensure vm_snapshot_id is unique
-Patch5:         virt-v2v-0.8.7-05-b41ff38e.patch
-Patch6:         virt-v2v-0.8.7-06-ea855d87.patch
+# Clean RPM database before any rpm operations
+Patch5:		virt-v2v-0.8.9-05-9fb11799.patch
+
+# Replace xvc0 with ttyS0 in securetty
+Patch6:		virt-v2v-0.8.9-06-af24c47b.patch
+
+# libvirtxml guest format conversion fails with guestfs launch failure
+Patch7:		virt-v2v-0.8.9-07-2df5a06f.patch
 
 # Unfortunately, despite really being noarch, we have to make virt-v2v arch
 # dependent to avoid build failures on architectures where libguestfs isn't
@@ -71,9 +76,7 @@ BuildRequires:  perl(XML::DOM)
 BuildRequires:  perl(XML::DOM::XPath)
 BuildRequires:  perl(XML::Writer)
 
-# We require perl-Sys-Guestfs >= 1:1.14.0, but it's not available in the
-# buildroot yet. The module load test works on the available version, though.
-BuildRequires:  perl-Sys-Guestfs
+BuildRequires:  perl-Sys-Guestfs >= 1:1.14.0
 BuildRequires:  perl-hivex >= 1.2.2
 
 Requires:  perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
@@ -123,6 +126,7 @@ variety of guest operating systems from libvirt-managed hosts and VMware ESX.
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
+%patch7 -p1
 
 
 %build
@@ -201,8 +205,18 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Fri Nov  2 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-7
-- Generate unique vm_snapshot_id when converting to RHEV (RHBZ#872496)
+* Mon Oct 22 2012 Matthew Booth <mbooth@redhat.com> - 0.8.9-2
+- Fix creation of /Temp/V2V (RHBZ#868073)
+- Fix output to RHEV (RHBZ#868129)
+- Clean RPM database before any rpm operations
+- Fix update of xvc0 to ttyS0 in securetty
+- Fix guestfs launch failure doing format conversion with libvirtxmlguest
+  (RBBZ#868405)
+
+* Wed Oct 17 2012 Matthew Booth <mbooth@redhat.com> - 0.8.9-1
+- Update to new upstream release
+- Don't warn on unknown floppy devices (RHBZ#794680)
+- Create disks with cache=none on libvirt (RHBZ#838057)
 
 * Wed May  2 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-6
 - Disable accidentally-enabled debugging in p2v-server (RHBZ#817062)

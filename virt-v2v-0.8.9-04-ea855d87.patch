@@ -1,4 +1,4 @@
-commit da0639fac3ad4a2319f2ca36dbb1709c6c1bb035
+commit 3cfc266e7bc75d5d5b94e534487e8e3205116681
 Author: Matthew Booth <mbooth@redhat.com>
 Date:   Fri Oct 19 10:59:15 2012 +0100
 
@@ -8,7 +8,7 @@ Date:   Fri Oct 19 10:59:15 2012 +0100
     (cherry picked from commit ea855d875852d14984ceb5cf053e5c811faa1141)
 
 diff --git a/lib/Sys/VirtConvert/Connection/RHEVTarget.pm b/lib/Sys/VirtConvert/Connection/RHEVTarget.pm
-index ad168f0..f6ea0eb 100644
+index 14d9be2..fc4d005 100644
 --- a/lib/Sys/VirtConvert/Connection/RHEVTarget.pm
 +++ b/lib/Sys/VirtConvert/Connection/RHEVTarget.pm
 @@ -1039,7 +1039,7 @@ sub _disks

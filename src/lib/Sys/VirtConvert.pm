@@ -1,5 +1,5 @@
 # Sys::VirtConvert
-# Copyright (C) 2009-2011 Red Hat Inc.
+# Copyright (C) 2009-2012 Red Hat Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,7 @@ package Sys::VirtConvert;
 use strict;
 use warnings;
 
-$Sys::VirtConvert::VERSION = "0.8.7";
+$Sys::VirtConvert::VERSION = "0.8.9";
 
 =pod
 
@@ -51,7 +51,7 @@ Matthew Booth <mbooth@redhat.com>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2009-2011 Red Hat Inc.
+Copyright (C) 2009-2012 Red Hat Inc.
 
 =head1 LICENSE
 

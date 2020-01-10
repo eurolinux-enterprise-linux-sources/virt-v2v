@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # virt-v2v
-# Copyright (C) 2009-2011 Red Hat Inc.
+# Copyright (C) 2009-2012 Red Hat Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,9 +55,10 @@ virt-v2v - Convert a guest to use KVM
 =head1 DESCRIPTION
 
 virt-v2v converts guests from a foreign hypervisor to run on KVM, managed by
-libvirt or Red Hat Enterprise Virtualisation (RHEV) version 2.2 or later. It can
-currently convert Red Hat Enterprise Linux and Windows guests running on Xen and
-VMware ESX. It will enable VirtIO drivers in the converted guest if possible.
+libvirt or Red Hat Enterprise Virtualisation (RHEV) version 2.2 or later. It
+can currently convert Red Hat Enterprise Linux and Windows guests running on
+Xen, VirtualBox, and VMware ESX. It will enable VirtIO drivers in the
+converted guest if possible.
 
 =head1 OPTIONS
 
@@ -593,6 +594,12 @@ if (defined($transferiso)) {
     $transferdev = pop(@devices);
 }
 
+# RHEV doesn't support a serial console, so automatically disable it
+my %options;
+if ($output_method eq 'rhev') {
+    $options{NO_SERIAL_CONSOLE} = 1;
+}
+
 my $guestcaps;
 my $root;
 eval {
@@ -601,7 +608,8 @@ eval {
 
     # Modify the guest and its metadata
     $guestcaps =
-        Sys::VirtConvert::Converter->convert($g, $config, $root, $meta);
+        Sys::VirtConvert::Converter->convert($g, $config, $root, $meta,
+                                             \%options);
 
     $target->create_guest($g, $root, $meta, $config, $guestcaps, $output_name);
 };
@@ -776,6 +784,26 @@ This will require a reboot if the host running Xen is the same host that will
 run KVM. This is because libvirt needs to connect to a running xen hypervisor to
 obtain its metadata.
 
+=head2 Local VirtualBox guests
+
+The following is required when converting guests which used to run VirtualBox
+and are being converted to KVM. The conversion needs a guest XML definition
+file which needs to be adjusted for the guest to be converted (at least name,
+uuid, image path, image type, and MAC address):
+
+ qemu-img convert -O qcow2 /tmp/v-rhel.vdi /var/lib/libvirt/images/v-rhel.img
+ virsh --connect qemu:///system pool-refresh default
+ virt-cat /var/lib/libvirt/images/v-rhel.img \
+  /etc/sysconfig/network-scripts/ifcfg-eth0 | grep ^HWADDR
+ # Replace the MAC address in the guest XML definition file or adjust
+ # ifcfg-eth0 after booting up the guest to match the MAC address defined in
+ # XML file
+ virt-v2v -i libvirtxml -os default /tmp/v-rhel.xml
+
+B<N.B.> For the time being when converting VirtualBox Windows guests the
+VirtualBox Guest Additions need to be manually uninstalled on the guest
+when still running on VirtualBox.
+
 =head2 Converting to run on libvirt/KVM
 
 =head3 Create a local storage pool for transferred storage
@@ -837,7 +865,7 @@ complex mappings, see L<virt-v2v.conf(5)>.
 
 If it is not possible to provide software updates over the network in your
 environment, software will be installed as specified in virt-v2v.conf. See
-L<virt-v2v.conf(5)> for a details.
+L<virt-v2v.conf(5)> for details.
 
 It is possible to avoid specifying replacement kernels in the virt-v2v config
 file by ensuring that the guest has an appropriate kernel installed prior to
@@ -1143,7 +1171,7 @@ Matthew Booth <mbooth@redhat.com>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2009-2011 Red Hat Inc.
+Copyright (C) 2009-2012 Red Hat Inc.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

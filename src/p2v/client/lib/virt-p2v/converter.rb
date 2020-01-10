@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Red Hat Inc.
+# Copyright (C) 2011-2012 Red Hat Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -134,8 +134,7 @@ class Converter
 
     def disk(dev, status, progress, completion)
         path = "/dev/#{dev}"
-        # XXX: No error checking of blockdev execution
-        size = Integer(`blockdev --getsize64 #{path}`.chomp)
+        size = FixedBlockDevice[dev].size
         status.call("Transferring #{dev}")
         iterate([
             lambda { |cb| @connection.path(size, path, &cb) },

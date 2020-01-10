@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Red Hat Inc.
+# Copyright (C) 2011-2012 Red Hat Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ module VirtP2V::UI::Convert
     CONVERT_FIXED_CONVERT   = 0
     CONVERT_FIXED_DEVICE    = 1
     CONVERT_FIXED_PROGRESS  = 2
+    CONVERT_FIXED_SIZE_GB   = 3
 
     CONVERT_REMOVABLE_CONVERT   = 0
     CONVERT_REMOVABLE_DEVICE    = 1
@@ -95,6 +96,7 @@ module VirtP2V::UI::Convert
             fixed[CONVERT_FIXED_CONVERT]    = true
             fixed[CONVERT_FIXED_DEVICE]     = dev.device
             fixed[CONVERT_FIXED_PROGRESS]   = 0
+            fixed[CONVERT_FIXED_SIZE_GB]    = dev.size / 1024 / 1024 / 1024
         }
 
         VirtP2V::RemovableBlockDevice.all_devices.each { |dev|
@@ -246,15 +248,21 @@ module VirtP2V::UI::Convert
                 }
             }
         ) { |result|
+            @converter.connection.close
+
             # N.B. Explicit test against true is required here, as result may be
             # an Exception, which would also return true if evaluated alone
             if result == true then
                 @status.text = ''
-                @converter.connection.close
                 event(EV_CONVERTED, true)
             else
                 @status.text = result.message
                 event(EV_CONVERTED, false)
+
+                # Reset transfer progress bars to zero
+                @fixeds.each { |model, path, iter|
+                    iter[CONVERT_FIXED_PROGRESS] = 0
+                }
             end
         }
     end

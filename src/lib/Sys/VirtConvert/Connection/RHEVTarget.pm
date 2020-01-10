@@ -1,5 +1,5 @@
 # Sys::VirtConvert::Connection::RHEVTarget
-# Copyright (C) 2010-2011 Red Hat Inc.
+# Copyright (C) 2010-2012 Red Hat Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -1039,8 +1039,7 @@ sub _disks
         $diske->setAttribute('ovf:actual_size', $usage_gb);
         $diske->setAttribute('ovf:fileRef', $fileref);
         $diske->setAttribute('ovf:parentRef', '');
-        $diske->setAttribute('ovf:vm_snapshot_id',
-                             '00000000-0000-0000-0000-000000000000');
+        $diske->setAttribute('ovf:vm_snapshot_id', get_uuid());
         $diske->setAttribute('ovf:volume-format', $vol->_get_rhev_format());
         $diske->setAttribute('ovf:volume-type', $vol->_get_rhev_type());
         $diske->setAttribute('ovf:format', 'http://en.wikipedia.org/wiki/Byte');
@@ -1186,7 +1185,7 @@ sub _networks
 
 =head1 COPYRIGHT
 
-Copyright (C) 2010-2011 Red Hat Inc.
+Copyright (C) 2010-2012 Red Hat Inc.
 
 =head1 LICENSE
 

@@ -1,0 +1,26 @@
+commit c93c092a68828a763b090345c2eeaa3102e42e82
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Mon Oct 22 14:53:12 2012 +0100
+
+    RedHat: Replace xvc0 with ttyS0 in securetty
+    
+    This fixes a regression introduced by dc022b7a046fdc175b4fe9a1425b616934665279.
+    The remove logic was inverted for securetty.
+    (cherry picked from commit af24c47b102b60fb4241c5a40f1a0dd369201752)
+
+diff --git a/lib/Sys/VirtConvert/Converter/RedHat.pm b/lib/Sys/VirtConvert/Converter/RedHat.pm
+index 7c034bb..cd77fd6 100644
+--- a/lib/Sys/VirtConvert/Converter/RedHat.pm
++++ b/lib/Sys/VirtConvert/Converter/RedHat.pm
+@@ -398,9 +398,9 @@ sub _configure_console
+ 
+         if($tty eq "xvc0" || $tty eq "hvc0") {
+             if ($remove) {
+-                $g->aug_set($augpath, 'ttyS0');
+-            } else {
+                 $g->aug_rm($augpath);
++            } else {
++                $g->aug_set($augpath, 'ttyS0');
+             }
+         }
+ 

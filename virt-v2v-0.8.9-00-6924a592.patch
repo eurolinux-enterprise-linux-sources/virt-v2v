@@ -1,0 +1,24 @@
+commit 5829931296102c3619ce43d4f55d8cf764a3e49c
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Tue Oct 16 11:48:01 2012 +0100
+
+    RedHat: Don't warn on unknown floppy devices
+    
+    Fixes RHBZ#794680
+    (cherry picked from commit 6924a592223b52f707868a84b98865391c03d7c3)
+
+diff --git a/lib/Sys/VirtConvert/Converter/RedHat.pm b/lib/Sys/VirtConvert/Converter/RedHat.pm
+index 7a0c874..9876a96 100644
+--- a/lib/Sys/VirtConvert/Converter/RedHat.pm
++++ b/lib/Sys/VirtConvert/Converter/RedHat.pm
+@@ -2178,8 +2178,8 @@ sub _remap_block_devices
+             # Ignore this entry if it isn't a device name
+             next unless defined($name);
+ 
+-            # Ignore md devices, which don't need to be mapped
+-            next if $name eq 'md';
++            # Ignore md and floppy devices, which don't need to be mapped
++            next if $name =~ /(md|fd)/;
+ 
+             # Ignore this entry if it refers to a device we don't know anything
+             # about. The user will have to fix this post-conversion.
