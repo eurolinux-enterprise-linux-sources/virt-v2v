@@ -1,6 +1,6 @@
 Name:           virt-v2v
 Version:        0.9.1
-Release:        4%{?dist}%{?extra_release}
+Release:        5%{?dist}%{?extra_release}
 Summary:        Convert a virtual machine to run on KVM
 
 Group:          Applications/System
@@ -67,6 +67,13 @@ Patch9:   virt-v2v-0.9.1-09-49488e7.patch
 
 # 6bc7fd08 Don't allow creation of guests which don't use either raw or qcow2
 Patch10:  virt-v2v-0.9.1-10-6bc7fd08.patch
+
+# 61fac039 Windows: Fix conversion error when rhsrvany.exe isn't available
+Patch11:  virt-v2v-0.9.1-11-61fac039.patch
+
+# RHEL ONLY: Remove OVA support
+Patch12:  virt-v2v-0.9.1-12-RHEL_ONLY_Remove_OVA_support.patch
+
 
 # Unfortunately, despite really being noarch, we have to make virt-v2v arch
 # dependent to avoid build failures on architectures where libguestfs isn't
@@ -162,6 +169,8 @@ variety of guest operating systems from libvirt-managed hosts and VMware ESX.
 %patch8 -p1
 %patch9 -p1
 %patch10 -p1
+%patch11 -p1
+%patch12 -p1
 
 # If we handled git's diff format correctly, this would be deleted by Patch9
 rm windows/rhsrvany.exe
@@ -251,6 +260,10 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Nov 11 2013 Matthew Booth <mbooth@redhat.com> - 0.9.1-5
+- Remove broken OVA support (RHBZ#1027363)
+- Fix conversion error when rhsrvany.exe isn't available
+
 * Wed Oct 23 2013 Matthew Booth <mbooth@redhat.com> - 0.9.1-4
 - Improved error message on unsupported target disk format (RHBZ#956580)
 

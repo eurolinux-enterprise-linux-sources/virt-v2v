@@ -1,0 +1,19 @@
+commit 61fac039dae9df808950ec6db3ff32d4f38e7b3f
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Mon Nov 11 11:30:11 2013 +0000
+
+    Windows: Fix conversion error when rhsrvany.exe isn't available
+
+diff --git a/lib/Sys/VirtConvert/Converter/Windows.pm b/lib/Sys/VirtConvert/Converter/Windows.pm
+index f1a57f1..765ed9f 100644
+--- a/lib/Sys/VirtConvert/Converter/Windows.pm
++++ b/lib/Sys/VirtConvert/Converter/Windows.pm
+@@ -502,6 +502,8 @@ sub _close_firstboot
+ {
+     my ($g, $firstboot, $firstboot_tmp, $firstboot_dir) = @_;
+ 
++    return unless defined($firstboot);
++
+     print $firstboot <<'FIRSTBOOT';
+ 
+ echo uninstalling v2v-firstboot service >>log.txt
