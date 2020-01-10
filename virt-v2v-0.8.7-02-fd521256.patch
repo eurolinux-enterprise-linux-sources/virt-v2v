@@ -1,0 +1,39 @@
+commit fd52125641ee4b6812f1fa770fcbdbe66f6c3b35
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Thu Apr 19 13:49:51 2012 +0100
+
+    p2v-server: Check write stream opens before returning OK for CONTAINER
+    
+    We were returning OK immediately after receiving CONTAINER RAW, however it is
+    possible for $vol->get_write_stream() to return an error. If this happens, the
+    error will not be picked up by the client, which is now sending data.
+
+diff --git a/p2v/server/virt-p2v-server.pl b/p2v/server/virt-p2v-server.pl
+index 858bf32..3ec2f42 100755
+--- a/p2v/server/virt-p2v-server.pl
++++ b/p2v/server/virt-p2v-server.pl
+@@ -78,7 +78,7 @@ my $target;
+ 
+ # Initialize logging
+ logmsg_init('syslog');
+-#logmsg_level(DEBUG);
++logmsg_level(DEBUG);
+ 
+ # Uncomment these 2 lines to capture debug information from the conversion
+ # process
+@@ -266,7 +266,6 @@ sub receive_path
+     # We only support RAW container
+     my $ctype = $msg->{args}[0];
+     die("Received unknown container type: $ctype\n") unless $ctype eq CONT_RAW;
+-    p2v_return_ok();
+ 
+     # Update the disk entry with the new volume details
+     $disk->{local_path} = $vol->get_local_path();
+@@ -274,6 +273,7 @@ sub receive_path
+     $disk->{is_block} = $vol->is_block();
+ 
+     my $writer = $vol->get_write_stream($convert);
++    p2v_return_ok();
+ 
+     # Receive volume data in chunks
+     my $received = 0;

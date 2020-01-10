@@ -1,0 +1,188 @@
+commit dc022b7a046fdc175b4fe9a1425b616934665279
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Fri Apr 20 10:05:40 2012 +0100
+
+    Disable serial console when converting to RHEV
+    
+    RHEV doesn't have a serial console. If a guest has one configured, the result
+    may be confusing. This patch automatically unconfigures the serial console for a
+    RHEV target.
+
+diff --git a/lib/Sys/VirtConvert/Converter.pm b/lib/Sys/VirtConvert/Converter.pm
+index 71a537d..3bb9d09 100644
+--- a/lib/Sys/VirtConvert/Converter.pm
++++ b/lib/Sys/VirtConvert/Converter.pm
+@@ -81,12 +81,15 @@ sub convert
+ {
+     my $class = shift;
+ 
+-    my ($g, $config, $root, $meta) = @_;
++    my ($g, $config, $root, $meta, $options) = @_;
+     croak("convert called without g argument") unless defined($g);
+     croak("convert called without config argument") unless defined($config);
+     croak("convert called without root argument") unless defined($root);
+     croak("convert called without meta argument") unless defined($meta);
+ 
++    # Initialize options to an empty hash if it's not set
++    $options ||= {};
++
+     my $guestcaps;
+ 
+     # Mount up the disks.
+@@ -114,7 +117,8 @@ sub convert
+     # Find a module which can convert the guest and run it
+     foreach my $module ($class->modules()) {
+         if($module->can_handle(\%desc)) {
+-            $guestcaps = $module->convert($g, $root, $config, \%desc, $meta);
++            $guestcaps = $module->convert($g, $root, $config, \%desc, $meta,
++                                          $options);
+             last;
+         }
+     }
+diff --git a/lib/Sys/VirtConvert/Converter/RedHat.pm b/lib/Sys/VirtConvert/Converter/RedHat.pm
+index b708c20..84e1622 100644
+--- a/lib/Sys/VirtConvert/Converter/RedHat.pm
++++ b/lib/Sys/VirtConvert/Converter/RedHat.pm
+@@ -110,12 +110,13 @@ sub convert
+ {
+     my $class = shift;
+ 
+-    my ($g, $root, $config, $desc, $meta) = @_;
++    my ($g, $root, $config, $desc, $meta, $options) = @_;
+     croak("convert called without g argument") unless defined($g);
+     croak("convert called without root argument") unless defined($root);
+     croak("convert called without config argument") unless defined($config);
+     croak("convert called without desc argument") unless defined($desc);
+     croak("convert called without meta argument") unless defined($meta);
++    croak("convert called without options argument") unless defined($options);
+ 
+     _init_grub($g, $root, $desc);
+     my $grub_conf = $desc->{boot}->{grub_conf};
+@@ -142,7 +143,9 @@ sub convert
+     }
+ 
+     # Configure the rest of the system
+-    _configure_console($g, $grub_conf);
++    my $remove_serial_console = exists($options->{NO_SERIAL_CONSOLE});
++    _configure_console($g, $grub_conf, $remove_serial_console);
++
+     _configure_display_driver($g, $config, $meta, $desc);
+     _remap_block_devices($meta, $virtio, $g, $desc);
+     _configure_kernel_modules($g, $virtio);
+@@ -362,9 +365,12 @@ sub _configure_kernel_modules
+ # /dev/hvc0, so ideally we would just leave it alone. However, RHEL 6 libvirt
+ # doesn't yet support this device so we can't attach to it. We therefore use
+ # /dev/ttyS0 for RHEL 6 anyway.
++#
++# If the target doesn't support a serial console, we want to remove all
++# references to it instead.
+ sub _configure_console
+ {
+-    my ($g, $grub_conf) = @_;
++    my ($g, $grub_conf, $remove) = @_;
+ 
+     # Look for gettys which use xvc0 or hvc0
+     # RHEL 6 doesn't use /etc/inittab, but this doesn't hurt
+@@ -373,8 +379,16 @@ sub _configure_console
+ 
+         # If the process mentions xvc0, change it to ttyS0
+         if ($proc =~ /\b(x|h)vc0\b/) {
+-            $proc =~ s/\b(x|h)vc0\b/ttyS0/g;
+-            $g->aug_set($augpath, $proc);
++            if ($remove) {
++                $g->aug_rm($augpath.'/..');
++            } else {
++                $proc =~ s/\b(x|h)vc0\b/ttyS0/g;
++                $g->aug_set($augpath, $proc);
++            }
++        }
++
++        if ($remove && $proc =~ /\bttyS0\b/) {
++            $g->aug_rm($augpath.'/..');
+         }
+     }
+ 
+@@ -383,7 +397,15 @@ sub _configure_console
+         my $tty = $g->aug_get($augpath);
+ 
+         if($tty eq "xvc0" || $tty eq "hvc0") {
+-            $g->aug_set($augpath, 'ttyS0');
++            if ($remove) {
++                $g->aug_set($augpath, 'ttyS0');
++            } else {
++                $g->aug_rm($augpath);
++            }
++        }
++
++        if ($remove && $tty eq 'ttyS0') {
++            $g->aug_rm($augpath);
+         }
+     }
+ 
+@@ -393,8 +415,16 @@ sub _configure_console
+     {
+         my $console = $g->aug_get($augpath);
+         if ($console =~ /\b(x|h)vc0\b/) {
+-            $console =~ s/\b(x|h)vc0\b/ttyS0/g;
+-            $g->aug_set($augpath, $console);
++            if ($remove) {
++                $g->aug_rm($augpath);
++            } else {
++                $console =~ s/\b(x|h)vc0\b/ttyS0/g;
++                $g->aug_set($augpath, $console);
++            }
++        }
++
++        if ($remove && $console =~ /\bttyS0\b/) {
++            $g->aug_rm($augpath);
+         }
+     }
+ 
+diff --git a/p2v/server/virt-p2v-server.pl b/p2v/server/virt-p2v-server.pl
+index 3ec2f42..bf6c201 100755
+--- a/p2v/server/virt-p2v-server.pl
++++ b/p2v/server/virt-p2v-server.pl
+@@ -359,9 +359,15 @@ sub convert
+             $transferdev = pop(@devices);
+         }
+ 
++        my %options;
++        if ($config->get_method() eq 'rhev') {
++            $options{NO_SERIAL_CONSOLE} = 1;
++        }
++
+         my $root = inspect_guest($g, $transferdev);
+         my $guestcaps =
+-            Sys::VirtConvert::Converter->convert($g, $config, $root, $meta);
++            Sys::VirtConvert::Converter->convert($g, $config, $root, $meta,
++                                                 \%options);
+         $target->create_guest($g, $root, $meta, $config, $guestcaps,
+                               $meta->{name});
+ 
+diff --git a/v2v/virt-v2v.pl b/v2v/virt-v2v.pl
+index d1fa13e..7fe231a 100755
+--- a/v2v/virt-v2v.pl
++++ b/v2v/virt-v2v.pl
+@@ -594,6 +594,12 @@ if (defined($transferiso)) {
+     $transferdev = pop(@devices);
+ }
+ 
++# RHEV doesn't support a serial console, so automatically disable it
++my %options;
++if ($output_method eq 'rhev') {
++    $options{NO_SERIAL_CONSOLE} = 1;
++}
++
+ my $guestcaps;
+ my $root;
+ eval {
+@@ -602,7 +608,8 @@ eval {
+ 
+     # Modify the guest and its metadata
+     $guestcaps =
+-        Sys::VirtConvert::Converter->convert($g, $config, $root, $meta);
++        Sys::VirtConvert::Converter->convert($g, $config, $root, $meta,
++                                             \%options);
+ 
+     $target->create_guest($g, $root, $meta, $config, $guestcaps, $output_name);
+ };

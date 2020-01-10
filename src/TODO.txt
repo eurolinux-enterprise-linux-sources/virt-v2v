@@ -1,0 +1,6 @@
+Option for verbose output during conversion
+
+Option to create a log of changes made to a guest during conversion
+
+Add metadata to RHEV OVF to identify guest as converted
+  Include additional information about source hypervisor

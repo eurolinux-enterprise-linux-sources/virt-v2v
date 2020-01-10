@@ -1,0 +1,25 @@
+commit ce8aba5161a28d27af4438031ba586d3c918d4e8
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Wed Mar 7 11:07:37 2012 +0000
+
+    Fix DNS in _net_run()
+    
+    This fixes a regression introduced by 15dc5512ad49419df5d921ab76df55ff93ca35c9.
+    
+    Fixes: RHBZ#800353
+
+diff --git a/lib/Sys/VirtConvert/Converter/RedHat.pm b/lib/Sys/VirtConvert/Converter/RedHat.pm
+index fcbc1a0..2efce8a 100644
+--- a/lib/Sys/VirtConvert/Converter/RedHat.pm
++++ b/lib/Sys/VirtConvert/Converter/RedHat.pm
+@@ -1219,6 +1219,10 @@ sub _net_run {
+     my $resolv_bak = $g->exists('/etc/resolv.conf');
+     $g->mv('/etc/resolv.conf', '/etc/resolv.conf.v2vtmp') if ($resolv_bak);
+ 
++    # XXX We should get the nameserver from the appliance here, but
++    # there's no current api other than debug to do this.
++    $g->write_file('/etc/resolv.conf', "nameserver 169.254.2.3", 0);
++
+     eval &$sub();
+     my $err = $@;
+ 

@@ -1,0 +1,40 @@
+# Build related
+^_build/
+^Build$
+^blib/
+^virt-v2v-v(\d+(\.\d+)*)(\.tar\.gz$|/)
+^cover_db/
+^MYMETA.yml$
+^MYMETA.json$
+
+# Built translations
+^po/.*\.mo$
+
+# Backup files
+~$
+\.bak$
+(^|/)\.[^/]*\.swp$
+
+# git
+^.git/
+^.gitmodules$
+^git2cl/
+.gitignore$ # Wherever it appears
+
+# Eclipse
+^.project$
+
+# p2v-client gem output directory
+p2v/client/pkg
+# p2v-client extension temporary build directory
+p2v/client/tmp
+
+# Local-only files
+.local$
+
+# Compiled files
+\.o$
+\.so$
+
+# ISO file created when running image-builder in the build tree
+^p2v/image-builder/Virt-P2V.iso

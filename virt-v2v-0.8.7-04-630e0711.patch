@@ -1,0 +1,21 @@
+commit 630e0711ae3d9e4b5918603b3778ed3af703b6c2
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Fri Apr 27 15:37:31 2012 +0100
+
+    p2v-server: Don't enable DEBUG logging by default
+    
+    This was accidentally enabled in fd52125641ee4b6812f1fa770fcbdbe66f6c3b35
+
+diff --git a/p2v/server/virt-p2v-server.pl b/p2v/server/virt-p2v-server.pl
+index bf6c201..6b53ce5 100755
+--- a/p2v/server/virt-p2v-server.pl
++++ b/p2v/server/virt-p2v-server.pl
+@@ -78,7 +78,7 @@ my $target;
+ 
+ # Initialize logging
+ logmsg_init('syslog');
+-logmsg_level(DEBUG);
++#logmsg_level(DEBUG);
+ 
+ # Uncomment these 2 lines to capture debug information from the conversion
+ # process

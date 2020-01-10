@@ -1,0 +1,120 @@
+---
+abstract: 'Convert a virtual guest to use KVM'
+author:
+  - 'Matthew Booth <mbooth@redhat.com>'
+build_requires: {}
+configure_requires:
+  Module::Build: 0.36
+dynamic_config: 1
+generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.120351'
+license: open_source
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: virt-v2v
+provides:
+  Sys::VirtConvert:
+    file: lib/Sys/VirtConvert.pm
+    version: v0.8.7
+  Sys::VirtConvert::Config:
+    file: lib/Sys/VirtConvert/Config.pm
+    version: 0
+  Sys::VirtConvert::Connection::LibVirt:
+    file: lib/Sys/VirtConvert/Connection/LibVirt.pm
+    version: 0
+  Sys::VirtConvert::Connection::LibVirtSource:
+    file: lib/Sys/VirtConvert/Connection/LibVirtSource.pm
+    version: 0
+  Sys::VirtConvert::Connection::LibVirtTarget:
+    file: lib/Sys/VirtConvert/Connection/LibVirtTarget.pm
+    version: 0
+  Sys::VirtConvert::Connection::LibVirtXMLSource:
+    file: lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm
+    version: 0
+  Sys::VirtConvert::Connection::RHEVTarget:
+    file: lib/Sys/VirtConvert/Connection/RHEVTarget.pm
+    version: 0
+  Sys::VirtConvert::Connection::RHEVTarget::Transfer:
+    file: lib/Sys/VirtConvert/Connection/RHEVTarget.pm
+    version: 0
+  Sys::VirtConvert::Connection::RHEVTarget::Vol:
+    file: lib/Sys/VirtConvert/Connection/RHEVTarget.pm
+    version: 0
+  Sys::VirtConvert::Connection::RHEVTarget::WriteStream:
+    file: lib/Sys/VirtConvert/Connection/RHEVTarget.pm
+    version: 0
+  Sys::VirtConvert::Connection::Source:
+    file: lib/Sys/VirtConvert/Connection/Source.pm
+    version: 0
+  Sys::VirtConvert::Connection::Volume:
+    file: lib/Sys/VirtConvert/Connection/Volume.pm
+    version: 0
+  Sys::VirtConvert::Converter:
+    file: lib/Sys/VirtConvert/Converter.pm
+    version: 0
+  Sys::VirtConvert::Converter::RedHat:
+    file: lib/Sys/VirtConvert/Converter/RedHat.pm
+    version: 0
+  Sys::VirtConvert::Converter::Windows:
+    file: lib/Sys/VirtConvert/Converter/Windows.pm
+    version: 0
+  Sys::VirtConvert::ExecHelper:
+    file: lib/Sys/VirtConvert/ExecHelper.pm
+    version: 0
+  Sys::VirtConvert::GuestfsHandle:
+    file: lib/Sys/VirtConvert/GuestfsHandle.pm
+    version: 0
+  Sys::VirtConvert::Transfer::ESX:
+    file: lib/Sys/VirtConvert/Transfer/ESX.pm
+    version: 0
+  Sys::VirtConvert::Transfer::ESX::ReadStream:
+    file: lib/Sys/VirtConvert/Transfer/ESX.pm
+    version: 0
+  Sys::VirtConvert::Transfer::ESX::UA:
+    file: lib/Sys/VirtConvert/Transfer/ESX.pm
+    version: 0
+  Sys::VirtConvert::Transfer::GuestfsStream:
+    file: lib/Sys/VirtConvert/Transfer/Local.pm
+    version: 0
+  Sys::VirtConvert::Transfer::Local:
+    file: lib/Sys/VirtConvert/Transfer/Local.pm
+    version: 0
+  Sys::VirtConvert::Transfer::Local::GuestfsReadStream:
+    file: lib/Sys/VirtConvert/Transfer/Local.pm
+    version: 0
+  Sys::VirtConvert::Transfer::Local::GuestfsWriteStream:
+    file: lib/Sys/VirtConvert/Transfer/Local.pm
+    version: 0
+  Sys::VirtConvert::Transfer::Local::ReadStream:
+    file: lib/Sys/VirtConvert/Transfer/Local.pm
+    version: 0
+  Sys::VirtConvert::Transfer::Local::SparseWriter:
+    file: lib/Sys/VirtConvert/Transfer/Local.pm
+    version: 0
+  Sys::VirtConvert::Transfer::Local::WriteStream:
+    file: lib/Sys/VirtConvert/Transfer/Local.pm
+    version: 0
+  Sys::VirtConvert::Transfer::SSH:
+    file: lib/Sys/VirtConvert/Transfer/SSH.pm
+    version: 0
+  Sys::VirtConvert::Transfer::SSH::ReadStream:
+    file: lib/Sys/VirtConvert/Transfer/SSH.pm
+    version: 0
+  Sys::VirtConvert::Transfer::SSH::Stream:
+    file: lib/Sys/VirtConvert/Transfer/SSH.pm
+    version: 0
+  Sys::VirtConvert::Transfer::SSH::WriteStream:
+    file: lib/Sys/VirtConvert/Transfer/SSH.pm
+    version: 0
+  Sys::VirtConvert::Util:
+    file: lib/Sys/VirtConvert/Util.pm
+    version: 0
+  rhev_util:
+    file: lib/Sys/VirtConvert/Connection/RHEVTarget.pm
+    version: 0
+resources:
+  homepage: http://people.redhat.com/mbooth/virt-v2v/
+  license: http://www.gnu.org/licenses/gpl.html
+  repository: git://git.fedorahosted.org/virt-v2v.git
+  x_MailingList: http://www.redhat.com/mailman/listinfo/libguestfs
+version: v0.8.7
