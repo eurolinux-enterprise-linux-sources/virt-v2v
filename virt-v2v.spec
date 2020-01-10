@@ -1,6 +1,6 @@
 Name:           virt-v2v
 Version:        0.8.7
-Release:        6%{?dist}%{?extra_release}
+Release:        7%{?dist}%{?extra_release}
 Summary:        Convert a virtual machine to run on KVM
 
 Group:          Applications/System
@@ -36,6 +36,10 @@ Patch3:         virt-v2v-0.8.7-03-dc022b7a.patch
 
 # p2v-server: Don't enable DEBUG logging by default
 Patch4:         virt-v2v-0.8.7-04-630e0711.patch
+
+# rhev: Ensure vm_snapshot_id is unique
+Patch5:         virt-v2v-0.8.7-05-b41ff38e.patch
+Patch6:         virt-v2v-0.8.7-06-ea855d87.patch
 
 # Unfortunately, despite really being noarch, we have to make virt-v2v arch
 # dependent to avoid build failures on architectures where libguestfs isn't
@@ -117,6 +121,8 @@ variety of guest operating systems from libvirt-managed hosts and VMware ESX.
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
+%patch5 -p1
+%patch6 -p1
 
 
 %build
@@ -195,6 +201,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Nov  2 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-7
+- Generate unique vm_snapshot_id when converting to RHEV (RHBZ#872496)
+
 * Wed May  2 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-6
 - Disable accidentally-enabled debugging in p2v-server (RHBZ#817062)
 
