@@ -4,7 +4,7 @@
       "Matthew Booth <mbooth@redhat.com>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Module::Build version 0.4004, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "open_source"
    ],
@@ -23,7 +23,7 @@
    "provides" : {
       "Sys::VirtConvert" : {
          "file" : "lib/Sys/VirtConvert.pm",
-         "version" : "v0.8.9"
+         "version" : "v0.9.1"
       },
       "Sys::VirtConvert::Config" : {
          "file" : "lib/Sys/VirtConvert/Config.pm",
@@ -65,6 +65,10 @@
          "file" : "lib/Sys/VirtConvert/Connection/Source.pm",
          "version" : 0
       },
+      "Sys::VirtConvert::Connection::VMwareOVASource" : {
+         "file" : "lib/Sys/VirtConvert/Connection/VMwareOVASource.pm",
+         "version" : 0
+      },
       "Sys::VirtConvert::Connection::Volume" : {
          "file" : "lib/Sys/VirtConvert/Connection/Volume.pm",
          "version" : 0
@@ -74,6 +78,18 @@
          "version" : 0
       },
       "Sys::VirtConvert::Converter::RedHat" : {
+         "file" : "lib/Sys/VirtConvert/Converter/RedHat.pm",
+         "version" : 0
+      },
+      "Sys::VirtConvert::Converter::RedHat::Grub" : {
+         "file" : "lib/Sys/VirtConvert/Converter/RedHat.pm",
+         "version" : 0
+      },
+      "Sys::VirtConvert::Converter::RedHat::Grub2" : {
+         "file" : "lib/Sys/VirtConvert/Converter/RedHat.pm",
+         "version" : 0
+      },
+      "Sys::VirtConvert::Converter::RedHat::GrubLegacy" : {
          "file" : "lib/Sys/VirtConvert/Converter/RedHat.pm",
          "version" : 0
       },
@@ -165,5 +181,5 @@
       },
       "x_MailingList" : "http://www.redhat.com/mailman/listinfo/libguestfs"
    },
-   "version" : "v0.8.9"
+   "version" : "v0.9.1"
 }

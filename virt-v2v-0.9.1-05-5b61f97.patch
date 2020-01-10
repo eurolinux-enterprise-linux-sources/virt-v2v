@@ -1,0 +1,19 @@
+commit 5b61f979372c109a2a83ae16319fe7d364a567b5
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Mon Sep 2 14:23:26 2013 +0100
+
+    build: Add missing return 0 to ACTION_po
+
+diff --git a/Build.PL b/Build.PL
+index 0fbba45..cd32570 100644
+--- a/Build.PL
++++ b/Build.PL
+@@ -19,6 +19,8 @@ sub ACTION_po
+ 
+     system($self->config('make'), '-C', 'po', 'pot', 'update-po') == 0
+         or return 1;
++
++    return 0;
+ }
+ 
+ # Generate locale files and install them to blib/locale

@@ -6,7 +6,7 @@ build_requires: {}
 configure_requires:
   Module::Build: 0.36
 dynamic_config: 1
-generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.120921'
+generated_by: 'Module::Build version 0.4004, CPAN::Meta::Converter version 2.120921'
 license: open_source
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -15,7 +15,7 @@ name: virt-v2v
 provides:
   Sys::VirtConvert:
     file: lib/Sys/VirtConvert.pm
-    version: v0.8.9
+    version: v0.9.1
   Sys::VirtConvert::Config:
     file: lib/Sys/VirtConvert/Config.pm
     version: 0
@@ -46,6 +46,9 @@ provides:
   Sys::VirtConvert::Connection::Source:
     file: lib/Sys/VirtConvert/Connection/Source.pm
     version: 0
+  Sys::VirtConvert::Connection::VMwareOVASource:
+    file: lib/Sys/VirtConvert/Connection/VMwareOVASource.pm
+    version: 0
   Sys::VirtConvert::Connection::Volume:
     file: lib/Sys/VirtConvert/Connection/Volume.pm
     version: 0
@@ -53,6 +56,15 @@ provides:
     file: lib/Sys/VirtConvert/Converter.pm
     version: 0
   Sys::VirtConvert::Converter::RedHat:
+    file: lib/Sys/VirtConvert/Converter/RedHat.pm
+    version: 0
+  Sys::VirtConvert::Converter::RedHat::Grub:
+    file: lib/Sys/VirtConvert/Converter/RedHat.pm
+    version: 0
+  Sys::VirtConvert::Converter::RedHat::Grub2:
+    file: lib/Sys/VirtConvert/Converter/RedHat.pm
+    version: 0
+  Sys::VirtConvert::Converter::RedHat::GrubLegacy:
     file: lib/Sys/VirtConvert/Converter/RedHat.pm
     version: 0
   Sys::VirtConvert::Converter::Windows:
@@ -117,4 +129,4 @@ resources:
   license: http://www.gnu.org/licenses/gpl.html
   repository: git://git.fedorahosted.org/virt-v2v.git
   x_MailingList: http://www.redhat.com/mailman/listinfo/libguestfs
-version: v0.8.9
+version: v0.9.1

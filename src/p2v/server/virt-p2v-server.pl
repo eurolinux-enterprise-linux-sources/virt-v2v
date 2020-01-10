@@ -54,12 +54,8 @@ manually.
 # from or writing to a pipe.
 $SIG{'PIPE'} = 'IGNORE';
 
-# The protocol version we support
-use constant VERSION => 0;
-
 # Message types
-use constant MSG_VERSION        => 'VERSION';
-use constant MSG_LANG           => 'LANG';
+use constant MSG_OPTIONS        => 'OPTIONS';
 use constant MSG_METADATA       => 'METADATA';
 use constant MSG_PATH           => 'PATH';
 use constant MSG_CONVERT        => 'CONVERT';
@@ -68,8 +64,23 @@ use constant MSG_SET_PROFILE    => 'SET_PROFILE';
 use constant MSG_CONTAINER      => 'CONTAINER';
 use constant MSG_DATA           => 'DATA';
 
+my @MSGS = (
+    MSG_METADATA,
+    MSG_OPTIONS,
+    MSG_PATH,
+    MSG_CONVERT,
+    MSG_LIST_PROFILES,
+    MSG_SET_PROFILE,
+    MSG_CONTAINER,
+    MSG_DATA
+);
+
 # Container types
 use constant CONT_RAW => 'RAW';
+
+my @CONTS = (
+    CONT_RAW
+);
 
 # Global state
 my $config;
@@ -79,11 +90,6 @@ my $target;
 # Initialize logging
 logmsg_init('syslog');
 #logmsg_level(DEBUG);
-
-# Uncomment these 2 lines to capture debug information from the conversion
-# process
-#$ENV{'LIBGUESTFS_DEBUG'} = 1;
-#$ENV{'LIBGUESTFS_TRACE'} = 1;
 
 logmsg NOTICE, __x("{program} started.", program => 'p2v-server');
 
@@ -123,7 +129,8 @@ eval {
         ('/etc/virt-v2v.conf', '/var/lib/virt-v2v/virt-v2v.db');
 
     # Send our identification string
-    print "VIRT_P2V_SERVER ".$Sys::VirtConvert::VERSION."\n";
+    print "VIRT_P2V_SERVER ".$Sys::VirtConvert::VERSION.
+          " { MSG: ".join(' ', @MSGS)." } { CONT: ".join(' ', @CONTS)." }\n";
 
     my $converted = 0;
 
@@ -131,23 +138,23 @@ eval {
     while ($msg = p2v_receive()) {
         my $type = $msg->{type};
 
-        # VERSION n
-        if ($type eq MSG_VERSION) {
-            my $version = $msg->{args}[0];
-            if ($version <= VERSION) {
-                p2v_return_ok();
+        # OPTIONS
+        if ($type eq MSG_OPTIONS) {
+            my $yaml = p2v_read($msg->{args}[0]);
+            my $options = eval { Load($yaml); };
+            die("Error parsing options: $@\n") if $@;
+
+            $ENV{LANG} = $options->{LANG} if defined($options->{LANG});
+            if (exists($options->{DEBUG})) {
+                if ($options->{DEBUG}) {
+                    $ENV{LIBGUESTFS_TRACE} = 1;
+                    $ENV{LIBGUESTFS_DEBUG} = 1;
+                } else {
+                    delete($ENV{LIBGUESTFS_TRACE});
+                    delete($ENV{LIBGUESTFS_DEBUG});
+                }
             }
 
-            else {
-                die(__x('This version of virt-p2v-server does not '.
-                        "support protocol version {version}.\n",
-                        version => $version));
-            }
-        }
-
-        # LANG lang
-        elsif ($type eq MSG_LANG) {
-            $ENV{LANG} = $msg->{args}[0];
             p2v_return_ok();
         }
 

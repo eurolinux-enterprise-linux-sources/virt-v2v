@@ -1,0 +1,51 @@
+commit 8c00f13f0a12d084d88b22208264452e89fd72eb
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Mon Sep 2 12:25:27 2013 +0100
+
+    Windows: Remove firstboot.bat
+    
+    This file is no longer used.
+
+diff --git a/MANIFEST b/MANIFEST
+index 6f212d6..f588354 100644
+--- a/MANIFEST
++++ b/MANIFEST
+@@ -102,6 +102,5 @@ v2v/virt-v2v.db
+ v2v/virt-v2v.pl
+ virt-v2v.spec
+ virt-v2v.spec.PL
+-windows/firstboot.bat
+ windows/README.txt
+ windows/rhsrvany.exe
+diff --git a/windows/firstboot.bat b/windows/firstboot.bat
+deleted file mode 100644
+index 7a234b2..0000000
+--- a/windows/firstboot.bat
++++ /dev/null
+@@ -1,26 +0,0 @@
+-@echo off
+-
+-rem firstboot.bat
+-rem Copyright (C) 2009-2010 Red Hat Inc.
+-rem
+-rem This program is free software; you can redistribute it and/or
+-rem modify it under the terms of the GNU Lesser General Public
+-rem License as published by the Free Software Foundation; either
+-rem version 2 of the License, or (at your option) any later version.
+-rem
+-rem This library is distributed in the hope that it will be useful,
+-rem but WITHOUT ANY WARRANTY; without even the implied warranty of
+-rem MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-rem Lesser General Public License for more details.
+-rem
+-rem You should have received a copy of the GNU Lesser General Public
+-rem License along with this library; if not, write to the Free Software
+-rem Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+-
+-echo v2v first boot script started > log.txt
+-
+-echo installing rhev-apt >> log.txt
+-"rhev-apt.exe" /S /v/qn >>log.txt
+-
+-echo starting rhev-apt
+-net start rhev-apt >>log.txt

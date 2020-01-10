@@ -1,0 +1,76 @@
+commit fd09aa8164650ef4cea69ad6ad6375687dcfea3a
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Fri Aug 30 16:03:38 2013 +0100
+
+    Windows: Uninstall Xen PV driver on first boot
+
+diff --git a/lib/Sys/VirtConvert/Converter/Windows.pm b/lib/Sys/VirtConvert/Converter/Windows.pm
+index 59de21e..f1a57f1 100644
+--- a/lib/Sys/VirtConvert/Converter/Windows.pm
++++ b/lib/Sys/VirtConvert/Converter/Windows.pm
+@@ -21,6 +21,7 @@ use strict;
+ use warnings;
+ 
+ use File::Spec;
++use File::Spec::Win32;
+ use File::Temp qw(tempdir);
+ use Encode qw(encode decode);
+ use IO::String;
+@@ -142,6 +143,7 @@ sub convert
+         _configure_firstboot($g, $root, $config, $tmpdir, $h_sys, $current_cs);
+ 
+     _configure_rhev_apt($g, $root, $config, $firstboot, $firstboot_dir);
++    _unconfigure_xenpv($g, $h_soft, $firstboot);
+ 
+     _close_firstboot($g, $firstboot, $firstboot_tmp, $firstboot_dir);
+ 
+@@ -556,6 +558,49 @@ net start rhev-apt >>log.txt
+ RHEVAPT
+ }
+ 
++sub _unconfigure_xenpv
++{
++    my ($g, $h_soft, $firstboot) = @_;
++
++    my @regkey = ('Microsoft', 'Windows', 'CurrentVersion', 'Uninstall',
++                  'Red Hat Paravirtualized Xen Drivers for Windows(R)');
++
++    # Find the node \Microsoft\Windows\CurrentVersion\Uninstall
++    #               \Red Hat Paravirtualized Xen Drivers for Windows(R)
++    my $node = $h_soft->root();
++    foreach (@regkey) {
++        $node = $h_soft->node_get_child($node, $_);
++        return unless defined($node);
++    }
++
++    my $uninst;
++    foreach my $v ($h_soft->node_values($node)) {
++        my $key = $h_soft->value_key($v);
++
++        if ($key eq 'UninstallString') {
++            $uninst = $h_soft->value_value($v);
++            $uninst = decode('UTF-16LE', $uninst);
++            last;
++        }
++    }
++
++    logmsg WARN, __x("Can't uninstall Xen PV: {regkey} doesn't contain {value}",
++                     regkey => '\HKLM\SOFTWARE\\'.join(@regkey, '\\'),
++                     value => 'UninstallString');
++
++    # The uninstall program will be uninst.exe. This is a wrapper around
++    # _uninst.exe which prompts the user. As we don't want the user to be
++    # prompted, we run _uninst.ex explicitly.
++    my ($vol, $dir, $file) = File::Spec::Win32->splitpath($uninst);
++    $uninst = File::Spec::Win32->catfile($vol, $dir, '_uninst.exe');
++
++    print $firstboot <<XENPV;
++
++echo Uninstalling Xen PV driver >>log.txt
++"$uninst" >>log.txt
++XENPV
++}
++
+ sub _disable_services
+ {
+     my $h = shift;

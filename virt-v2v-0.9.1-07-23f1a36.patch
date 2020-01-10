@@ -1,0 +1,22 @@
+commit 23f1a366d00b6379ca7015b973b956db34f627ef
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Mon Sep 2 14:25:46 2013 +0100
+
+    build: Make syntaxcheck handle files with dos line endings
+    
+    syntaxcheck was incorrectly detecting every line of a file with dos line endings
+    as having trailing whitespace.
+
+diff --git a/Build.PL b/Build.PL
+index 7414463..4de630c 100644
+--- a/Build.PL
++++ b/Build.PL
+@@ -121,7 +121,7 @@ sub ACTION_syntaxcheck
+         $checktabs = 0 if($name =~ /^Makefile(\..*)?$/);
+ 
+         while(<$fh>) {
+-            if(/\s\n$/) {
++            if(/[ \t](?:\r|\n)$/) {
+                 $self->log_info("$file: trailing whitespace on line $.\n");
+                 $error = 1;
+             }

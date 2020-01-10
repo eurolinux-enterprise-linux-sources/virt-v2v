@@ -62,7 +62,9 @@ BuildRequires:  perl(Test::Pod::Coverage)
 BuildRequires:  perl(Module::Find)
 
 # Runtime perl modules also required at build time for use_ok test
+BuildRequires:  perl(Archive::Extract)
 BuildRequires:  perl(DateTime)
+BuildRequires:  perl(Digest::SHA1)
 BuildRequires:  perl(IO::String)
 BuildRequires:  perl(Locale::TextDomain)
 BuildRequires:  perl(Module::Pluggable)
@@ -74,7 +76,6 @@ BuildRequires:  perl(Term::ProgressBar)
 BuildRequires:  perl(URI)
 BuildRequires:  perl(XML::DOM)
 BuildRequires:  perl(XML::DOM::XPath)
-BuildRequires:  perl(XML::Writer)
 
 BuildRequires:  perl-Sys-Guestfs >= 1:1.14.0
 BuildRequires:  perl-hivex >= 1.2.2

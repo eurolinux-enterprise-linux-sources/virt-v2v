@@ -1,3 +1,418 @@
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert.pm: Version 0.9.1
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * virt-v2v.spec.PL: spec: Remove dependency on XML::Writer This was removed in commit 5a194f2b808677f9b2f6c57036c335e672432ef8
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * MANIFEST: po: Add new languages to MANIFEST
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/fr.po, po/ja.po, po/uk.po: po: Update translations
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/fr.po: po: Fix error in fr.po from transifex
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/de.po, po/es.po, po/es_ES.po, po/eu.po, po/fr.po, po/hu.po,
+        po/it.po, po/ja.po, po/nb.po, po/nl.po, po/or.po, po/pl.po,
+        po/pt_BR.po, po/ru.po, po/te.po, po/tr.po, po/uk.po, po/zh_CN.po,
+        po/zh_TW.po: po: Pull reformatted translations back from transifex
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/de.po, po/es.po, po/es_ES.po, po/eu.po, po/fr.po, po/hu.po,
+        po/it.po, po/ja.po, po/nb.po, po/nl.po, po/or.po, po/pl.po,
+        po/pt_BR.po, po/ru.po, po/te.po, po/tr.po, po/uk.po, po/zh_CN.po,
+        po/zh_TW.po: po: Add new messages to .po files
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/Makefile: po: Don't automatically update pot before update-po It's easier to see what has changed if these 2 are independent.
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/virt-v2v.pot: po: Remove source locations and add new strings
+        to pot
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/de.po, po/es.po, po/es_ES.po, po/eu.po, po/fr.po, po/hu.po,
+        po/it.po, po/ja.po, po/nb.po, po/nl.po, po/or.po, po/pl.po,
+        po/pt_BR.po, po/ru.po, po/te.po, po/tr.po, po/uk.po, po/zh_CN.po,
+        po/zh_TW.po: po: Remove source locations from .po files
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * .tx/config: po: Update transifex config with new server location
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/PACKAGE, po/de.po, po/eu.po, po/hu.po, po/ja.po, po/nb.po,
+        po/tr.po: po: Add new languages
+
+2013-06-12  Matthew Booth <mbooth@redhat.com>
+
+        * po/Makefile: po: Don't include source location comments in
+        translation files Source location introduces a large amount of unnecessary churn in
+        version control, and makes real changes hard to spot.
+
+2013-06-11  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Fix v2v sets the
+        wrong default kernel when multiple kernels installed Fix off by 1 error when popping the default kernel to the top of
+        list_kernels.  While we're there, also ensure the default kernel
+        isn't in the list twice, although this is just a minor efficiency.  Fixes RHBZ#829859
+
+2013-06-11  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Fix error when
+        kernel has multiple console entries in grub.conf Fixes RHBZ#887884
+
+2013-06-10  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: Handle conversion of EFI
+        guests using grub legacy
+
+2013-06-10  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: Remove all packages with
+        vmware-tools- prefix VMware tools have been further broken up. We hit dependency problems
+        unless they are all removed.  Resolves RHBZ#953994
+
+2013-06-10  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: Don't attempt to remove
+        VMware library replacements if there aren't any
+
+2013-06-10  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: Fail with an error if we
+        fail to install a BIOS-compliant grub2 The guest won't boot anyway. Might as well complain about it.
+
+2013-06-10  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/RHEVTarget.pm,
+        lib/Sys/VirtConvert/Converter/RedHat.pm: Remove uses of $g->can() These seem to have broken at some point, and now always return
+        undef. It looks like ->can() can no longer penetrate the shim layer
+        of GuestfsHandle and AUTOLOAD.  Removed checked apis have been in a stable libguestfs release for
+        some time.
+
+2013-06-06  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/Windows.pm: windows: Don't assume
+        system root is /windows Fixes RHBZ#820928
+
+2013-06-06  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Config.pm: windows: Fix matching apps for
+        Windows guests This fixes a regression introduced by
+        9817c1968e1bd60a0c05626b00eb8611a1236c66.  This change caused v2v to
+        try to match a distro for Windows guests, causing the lookup to
+        fail.
+
+2013-03-26  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/VMwareOVASource.pm: ova: Display
+        friendly error on invalid OVA path
+
+2013-03-26  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/VMwareOVASource.pm: ova: Support
+        various formats for ovf:capacityAllocationUnits Previously only supported 'byte * 2^X'. However it can also be
+        'byte' or on other systems a plain number.
+
+2013-01-03  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Convert EFI
+        bootloader to BIOS bootloader during conversion
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * virt-v2v.spec.PL: spec: Add BuildRequires for VMwareOVASource
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert.pm: Version 0.9.0
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * po/virt-v2v.pot: po: Update translation source
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/lib/virt-p2v/converter.rb,
+        p2v/client/lib/virt-p2v/ui/convert.rb,
+        p2v/client/lib/virt-p2v/ui/p2v.ui: p2v-client: Add option to enable
+        server-side debugging
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/lib/virt-p2v/connection.rb: p2v-client: Add options
+        command
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/lib/virt-p2v/connection.rb: p2v-client: Parse
+        server-supported messages and containers on connection
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/lib/virt-p2v/connection.rb: p2v-client: Remove unused
+        lang message
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/server/virt-p2v-server.pl: p2v-server: Emit supported messages
+        and containers on invocation Extend the identification string to be of the form: VIRT_P2V_SERVER 0.9.0 { MSG: METADATA OPTIONS PATH CONVERT
+        LIST_PROFILES SET_PROFILE CONTAINER DATA } { CONT: RAW } This enables the client to test for specific message support without
+        resorting to a version number check.  Previous clients ignored everything after VIRT_P2V_SERVER, so this
+        remains backwards compatible.
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/server/virt-p2v-server.pl: p2v-server: Add OPTIONS command This replaces LANG, and adds the ability for the client to enable
+        debug messages on the server.
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/server/virt-p2v-server.pl: p2v-server: Remove LANG and VERSION
+        messages These were never used by a client.
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/.gitignore: gitignore: Generated rdoc
+
+2012-12-06  Matthew Booth <mbooth@redhat.com>
+
+        * .gitignore: gitignore: More eclipse artifacts
+
+2012-12-04  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Config.pm: Config: Warn if there are 2
+        profiles with the same name Fixes RHBZ#871732
+
+2012-12-03  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/LibVirtTarget.pm,
+        lib/Sys/VirtConvert/Connection/RHEVTarget.pm,
+        lib/Sys/VirtConvert/Converter/RedHat.pm,
+        lib/Sys/VirtConvert/Util.pm: Order SCSI disks before IDE disks A change precipitated by, but not directly related to, OVA support.
+        VMware seems to present SCSI disks before IDE disks. As we don't
+        currently have any strong reason for sorting IDE disks before SCSI
+        disks, this change swaps them round so that OVA works. I suspect
+        this issue is not truly fixed.
+
+2012-11-28  Francesco Vollero <fvollero@redhat.com>
+
+        * MANIFEST, lib/Sys/VirtConvert/Connection/VMwareOVASource.pm,
+        v2v/virt-v2v.pl: Added support for VMWare OVF/OVA format
+
+2012-12-03  Matthew Booth <mbooth@redhat.com>
+
+        * v2v/virt-v2v.pl: v2v: NFC Fix VMware capitalisation in POD
+
+2012-11-29  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Fix crash when
+        grub2 default-kernel returns blank
+
+2012-11-28  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm:
+        LibVirtXMLSource: Remove unused import
+
+2012-11-29  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm:
+        LibVirtXMLSource: NFC Fixup POD typos and copyright date
+
+2012-11-02  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/ext/rblibssh2/extconf.rb: p2v-client: Fix rblibssh2
+        build on older ruby The behaviour of have_struct_member() changed. Current versions
+        added only -DHAVE_ST_<member> to CPPFLAGS, whereas the current
+        version also adds -DHAVE_<type>_<member>. We rely on the latter, so
+        we now explicitly set it in extconf.rb.
+
+2012-11-02  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/lib/virt-p2v/netdevice.rb: p2v-client: Fix loading of
+        dbus on F16 The ruby dbus library transitioned from a regular library to a
+        rubygem during F16. For the rubygem to work, rubygems needs to load
+        first.
+
+2012-11-28  Matthew Booth <mbooth@redhat.com>
+
+        * MANIFEST: MANIFEST: NFC Put META.json in its correct sorted place
+
+2012-11-28  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm:
+        LibVirtXMLSource: Remove unused target argument to new()
+
+2012-11-26  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Check grub after
+        installing a kernel This fixes a regression which caused a RHEL 5 conversion to fail
+        when installing a new virtio kernel. We were only checking that the
+        grub entry existed at the very end of the conversion process, but as
+        list_kernels enumerates based on grub it was failing to enumerate
+        the newly installed kernel.
+
+2012-11-23  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: NFC comment fix
+
+2012-11-22  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Add support for
+        guests which use grub2
+
+2012-11-22  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: NFC: Trivial whitespace
+        cleanup
+
+2012-11-22  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm,
+        lib/Sys/VirtConvert/GuestfsHandle.pm: NFC: Cleanup use of eval Fixup numerous instances of the following pattern: my $foo; eval {     $foo = might_fail(); }; to: my $foo = eval { might_fail() }; Also put single-line evals on 1 line.
+
+2012-11-20  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter.pm,
+        lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Refactor grub code
+        into a module This change is in preparation for handling grub2. All grub code is
+        now in a single place, behind an interface which we should be able
+        to implement for grub2.
+
+2012-11-19  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Don't fully
+        inspect all kernels in _list_kernels
+
+2012-11-19  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: inline single-use
+        function _install_good_kernel
+
+2012-11-16  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Move _check_grub
+        functionality into _prepare_bootable
+
+2012-11-16  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: NFC Remove unused
+        imports
+
+2012-11-16  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: NFC Remove
+        redundant comment
+
+2012-10-25  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Config.pm, lib/Sys/VirtConvert/Converter.pm,
+        lib/Sys/VirtConvert/Converter/RedHat.pm,
+        lib/Sys/VirtConvert/Converter/Windows.pm: Eliminate $desc from the
+        conversion process $desc was a hangover from before inspection code moved into
+        libguestfs. This patch finally eliminates it in favour of direct
+        calls to libguestfs inspection code.  Combine some almost duplicate code: _init_kernels and _list_kernels
+        in the RedHat module.
+
+2012-11-15  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm,
+        lib/Sys/VirtConvert/Converter/Windows.pm: NFC: Don't bother counting
+        arguments and croaking This hasn't proven useful in practise
+
+2012-10-22  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/LibVirtXMLSource.pm: libvirtxml
+        guest format conversion fails with guestfs launch failure Fixes RHBZ#868405
+
+2012-10-22  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Re-configure
+        virtual consoles when removing Citrix guest apps
+
+2012-10-22  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Replace xvc0 with
+        ttyS0 in securetty This fixes a regression introduced by
+        dc022b7a046fdc175b4fe9a1425b616934665279.  The remove logic was
+        inverted for securetty.
+
+2012-10-22  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Clean RPM
+        database before any rpm operations We were previously only cleaning the RPM database before doing
+        anything which modified the rpm DB. However, I hit a situation where
+        an rpm -q in _init_kernels was hanging due to stale state files.
+
+2012-10-19  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Config.pm: Follow symbolic links when creating
+        the transfer iso This is useful when you want to symlink to files in a development
+        environment.
+
+2012-10-19  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/RHEVTarget.pm: Fix regression
+        introduced by b41ff38efcf8525d2b335a4870607eb40d78c6c4 Fixes RHBZ#868129
+
+2012-10-19  Richard W.M. Jones <rjones redhat com>
+
+        * lib/Sys/VirtConvert/Converter/Windows.pm: windows: Fix creation of
+        /Temp/V2V directory case_sensitive_path was not defined when called on a path where the
+        final element doesn't exist.  In libguestfs >= 1.16.29 it was
+        changed to return non-NULL if the final element doesn't exist so
+        that creation of new files works.  Fixes RHBZ#868073
+
+2012-10-17  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/LibVirtTarget.pm: libvirt: Create
+        disks with cache=none Fixes RHBZ#838057
+
+2012-10-16  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Connection/LibVirtSource.pm,
+        lib/Sys/VirtConvert/Connection/LibVirtTarget.pm: Fix regression
+        introduced by bcd46673ca3c4259ff23c9c9954adb80f77ceacc Incorrect use of format_pools meant that all libvirt volumes were
+        marked as raw.
+
+2012-10-16  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Don't warn on
+        unknown floppy devices Fixes RHBZ#794680
+
+2012-10-16  Matthew Booth <mbooth@redhat.com>
+
+        * p2v/client/bin/virt-p2v: p2v-client: Always display the network
+        configuration screen We previously skipped network configuration if the network was
+        already configured. However, this caused problems in certain
+        environments.
+
+2012-10-16  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: Automatically map
+        all xvdX to (s|h)dX Previously we only added this mapping for guests we detected as Xen.
+        However, this mapping is also useful for doing a P2V conversion of a
+        Citrix guest.
+
+2012-10-16  Matthew Booth <mbooth@redhat.com>
+
+        * lib/Sys/VirtConvert/Converter/RedHat.pm: RedHat: uninstall Citrix
+        guest packages
+
 2012-10-10  Matthew Booth <mbooth@redhat.com>
 
         * lib/Sys/VirtConvert.pm: Version 0.8.9

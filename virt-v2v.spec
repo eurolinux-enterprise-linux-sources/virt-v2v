@@ -1,6 +1,6 @@
 Name:           virt-v2v
-Version:        0.8.9
-Release:        2%{?dist}%{?extra_release}
+Version:        0.9.1
+Release:        4%{?dist}%{?extra_release}
 Summary:        Convert a virtual machine to run on KVM
 
 Group:          Applications/System
@@ -15,6 +15,19 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 # this blindly! The tool will automatically update itself.
 Source1:        RHEV-Application_Provisioning_Tool_46267.exe
 
+# The source of rhsrvany
+# rhsrvany is included in upstream virt-v2v as a git submodule. It doesn't
+# currently have a functioning upstream or any releases. Wherever possible, We
+# export patches for RHEL from upstream git. However, as rhsrvany has been added
+# as a submodule, a patch doesn't work. We therefore include an exported tarball
+# of the rhsrvany source at the relevant commit.
+#
+# This tarball has been created from a development source tree as follows:
+# 1. (cd rhsrvany && git clean -xdf)
+# 2. ./Build rhsrvany_conf
+# 3. tar zcvf rhsrvany-<commit>.tar.gz rhsrvany/ --exclude .git
+Source2:        rhsrvany-9cb29d2b.tar.gz
+
 # Backported upstream patches
 # Naming scheme: <name>-<version>-<local sequence number>-<git commit>.patch
 #  name:         virt-v2v
@@ -22,34 +35,47 @@ Source1:        RHEV-Application_Provisioning_Tool_46267.exe
 #  local seq no: the order the patches should be applied in
 #  git commit:   the first 8 characters of the git commit hash
 
-# Don't warn on unknown floppy devices (RHBZ#794680)
-Patch0:		virt-v2v-0.8.9-00-6924a592.patch
+# fe42743 Windows: Upload virtio drivers in _prepare_virtio_drivers
+Patch0:   virt-v2v-0.9.1-00-fe42743.patch
 
-# Fix all libvirt volumes being marked as raw
-Patch1:		virt-v2v-0.8.9-01-12964120.patch
+# 960a68f Windows: Disable the rhelscsi service
+Patch1:   virt-v2v-0.9.1-01-960a68f.patch
 
-# Create disks with cache=none (RHBZ#838057)
-Patch2:		virt-v2v-0.8.9-02-d907c8a2.patch
+# 2b39118 Windows: Make firstboot a dynamically-generated script
+Patch2:   virt-v2v-0.9.1-02-2b39118.patch
 
-# windows: Fix creation of /Temp/V2V directory
-Patch3:         virt-v2v-0.8.9-03-06f8b55e.patch
+# fd09aa8 Windows: Uninstall Xen PV driver on first boot
+Patch3:   virt-v2v-0.9.1-03-fd09aa8.patch
 
-# Fix regression introduced by b41ff38efcf8525d2b335a4870607eb40d78c6c4
-Patch4:         virt-v2v-0.8.9-04-ea855d87.patch
+# 8c00f13 Windows: Remove firstboot.bat
+Patch4:   virt-v2v-0.9.1-04-8c00f13.patch
 
-# Clean RPM database before any rpm operations
-Patch5:		virt-v2v-0.8.9-05-9fb11799.patch
+# 5b61f97 build: Add missing return 0 to ACTION_po
+Patch5:   virt-v2v-0.9.1-05-5b61f97.patch
 
-# Replace xvc0 with ttyS0 in securetty
-Patch6:		virt-v2v-0.8.9-06-af24c47b.patch
+# fbe13fc build: Use preferred Module::Build->do_system in favour of system()
+Patch6:   virt-v2v-0.9.1-06-fbe13fc.patch
 
-# libvirtxml guest format conversion fails with guestfs launch failure
-Patch7:		virt-v2v-0.8.9-07-2df5a06f.patch
+# 23f1a36 build: Make syntaxcheck handle files with dos line endings
+Patch7:   virt-v2v-0.9.1-07-23f1a36.patch
+
+# 988f67a build: Create new submodules target to initialise git submodules
+Patch8:   virt-v2v-0.9.1-08-988f67a.patch
+
+# 49488e7 build: Build rhsrvany from source (MODIFIED PATCH)
+Patch9:   virt-v2v-0.9.1-09-49488e7.patch
+
+# 6bc7fd08 Don't allow creation of guests which don't use either raw or qcow2
+Patch10:  virt-v2v-0.9.1-10-6bc7fd08.patch
 
 # Unfortunately, despite really being noarch, we have to make virt-v2v arch
 # dependent to avoid build failures on architectures where libguestfs isn't
 # available.
+%if 0%{?rhel} >= 6
 ExclusiveArch:  x86_64
+%else
+ExclusiveArch:  %{ix86} x86_64
+%endif
 
 # Build system direct requirements
 BuildRequires:  gettext
@@ -62,22 +88,27 @@ BuildRequires:  perl(Test::Pod::Coverage)
 BuildRequires:  perl(Module::Find)
 
 # Runtime perl modules also required at build time for use_ok test
+BuildRequires:  perl(Archive::Extract)
 BuildRequires:  perl(DateTime)
+BuildRequires:  perl(Digest::SHA1)
 BuildRequires:  perl(IO::String)
 BuildRequires:  perl(Locale::TextDomain)
 BuildRequires:  perl(Module::Pluggable)
 BuildRequires:  perl(Net::HTTPS)
 BuildRequires:  perl(Net::SSL)
-BuildRequires:  perl(Sys::Guestfs)
+BuildRequires:  perl(Sys::Syslog)
 BuildRequires:  perl(Sys::Virt)
 BuildRequires:  perl(Term::ProgressBar)
 BuildRequires:  perl(URI)
 BuildRequires:  perl(XML::DOM)
 BuildRequires:  perl(XML::DOM::XPath)
-BuildRequires:  perl(XML::Writer)
 
 BuildRequires:  perl-Sys-Guestfs >= 1:1.14.0
 BuildRequires:  perl-hivex >= 1.2.2
+
+# For building rhsrvany
+BuildRequires:  mingw32-filesystem
+BuildRequires:  mingw32-gcc
 
 Requires:  perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 
@@ -119,6 +150,7 @@ variety of guest operating systems from libvirt-managed hosts and VMware ESX.
 
 %prep
 %setup -q -n %{name}-v%{version}
+
 %patch0 -p1
 %patch1 -p1
 %patch2 -p1
@@ -127,11 +159,22 @@ variety of guest operating systems from libvirt-managed hosts and VMware ESX.
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
+%patch8 -p1
+%patch9 -p1
+%patch10 -p1
 
+# If we handled git's diff format correctly, this would be deleted by Patch9
+rm windows/rhsrvany.exe
+
+# Patch9 adds rhsrvany as a submodule. The contents of the submodule are
+# contained in this tarball.
+rm rhsrvany
+tar zxvf %{SOURCE2}
 
 %build
 %{__perl} Build.PL
 ./Build
+./Build rhsrvany
 
 # perl doesn't need debuginfo
 %define debug_package %{nil}
@@ -155,7 +198,10 @@ mkdir -p $windir
 
 # firstboot.bat expects the RHEV APT installer to be called rhev-apt.exe
 cp %{SOURCE1} $windir/rhev-apt.exe
-cp windows/rhsrvany.exe windows/firstboot.bat $windir/
+
+# Copy built rhsrvany.exe into place. There's no need for it to be executable
+cp rhsrvany/RHSrvAny/rhsrvany.exe $windir/
+chmod 0644 $windir/rhsrvany.exe
 
 mkdir -p %{buildroot}%{_sysconfdir}
 cp v2v/virt-v2v.conf %{buildroot}%{_sysconfdir}/
@@ -205,6 +251,19 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Wed Oct 23 2013 Matthew Booth <mbooth@redhat.com> - 0.9.1-4
+- Improved error message on unsupported target disk format (RHBZ#956580)
+
+* Wed Sep  4 2013 Matthew Booth <mbooth@redhat.com> - 0.9.1-3
+- Fix permissions on rhsrvany.exe
+
+* Tue Sep  3 2013 Matthew Booth <mbooth@redhat.com> - 0.9.1-2
+- Fix BSOD converting Windows guest with Xen PV drivers (RHBZ#809273)
+- Build rhsrvany from source (RHBZ#1003058)
+
+* Wed Jun 12 2013 Matthew Booth <mbooth@redhat.com> - 0.9.1-1
+- Rebase to new upstream release
+
 * Mon Oct 22 2012 Matthew Booth <mbooth@redhat.com> - 0.8.9-2
 - Fix creation of /Temp/V2V (RHBZ#868073)
 - Fix output to RHEV (RHBZ#868129)
@@ -229,10 +288,10 @@ rm -rf %{buildroot}
 * Wed Mar  7 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-4
 - Fix DNS when running network commands (RHBZ#800353)
 
-* Mon Mar  4 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-3
+* Mon Mar  5 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-3
 - Fix warning starting virt-p2v-server (RHBZ#799869)
 
-* Mon Mar  4 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-2
+* Mon Mar  5 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-2
 - Re-add accidentally removed versioned augeas-libs dependency
 
 * Fri Mar  2 2012 Matthew Booth <mbooth@redhat.com> - 0.8.7-1
@@ -241,7 +300,7 @@ rm -rf %{buildroot}
 * Fri Sep 16 2011 Matthew Booth <mbooth@redhat.com> - 0.8.3-5
 - Fix regression when converting Win7 32 bit to RHEV (RHBZ#738236)
 
-* Fri Aug 25 2011 Matthew Booth <mbooth@redhat.com> - 0.8.3-4
+* Fri Aug 26 2011 Matthew Booth <mbooth@redhat.com> - 0.8.3-4
 - Fix failure to convert a libvirt guest with no <graphics> element
 
 * Thu Aug 25 2011 Matthew Booth <mbooth@redhat.com> - 0.8.3-3
@@ -325,5 +384,5 @@ rm -rf %{buildroot}
 * Tue Sep 15 2009 Matthew Booth <mbooth@redhat.com> - 0.2.0-1
 - Update to release 0.2.0
 
-* Tue Sep  4 2009 Matthew Booth <mbooth@redhat.com> - 0.1.0-1
+* Tue Sep  1 2009 Matthew Booth <mbooth@redhat.com> - 0.1.0-1
 - Initial specfile

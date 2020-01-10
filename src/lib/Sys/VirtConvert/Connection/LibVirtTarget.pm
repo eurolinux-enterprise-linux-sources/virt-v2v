@@ -26,7 +26,7 @@ use Sys::Virt::StorageVol;
 
 use Sys::VirtConvert::Connection::LibVirt;
 use Sys::VirtConvert::Connection::Volume;
-use Sys::VirtConvert::Util qw(:DEFAULT parse_libvirt_volinfo);
+use Sys::VirtConvert::Util qw(:DEFAULT parse_libvirt_volinfo scsi_first_cmp);
 
 use XML::DOM;
 
@@ -174,7 +174,7 @@ sub create_volume
     if (defined($pooltype)) {
         $pooltype = $pooltype->getNodeValue();
 
-        if ($Sys::VirtConvert::Libvirt::format_pools{$pooltype}) {
+        if ($Sys::VirtConvert::Connection::LibVirt::format_pools{$pooltype}) {
             $vol_xml = $vol_xml_format;
         } else {
             $vol_xml = $vol_xml_noformat;
@@ -396,7 +396,7 @@ DOM
     $graphics->setAttribute('passwd', $display_password)
         if defined($display_password);
 
-    foreach my $disk (sort { $a->{device} cmp $b->{device} } @{$meta->{disks}})
+    foreach my $disk (sort { scsi_first_cmp($a->{device}, $b->{device}) } @{$meta->{disks}})
     {
         my $is_block = $disk->{dst}->is_block();
 
@@ -407,6 +407,7 @@ DOM
         my $driver = _append_elem($diskE, 'driver');
         $driver->setAttribute('name', 'qemu');
         $driver->setAttribute('type', $disk->{dst}->get_format());
+        $driver->setAttribute('cache', 'none');
 
         my $source = _append_elem($diskE, 'source');
         $source->setAttribute($is_block ? 'dev' : 'file',

@@ -31,7 +31,7 @@
 
 
 Name:           rubygem-virt-p2v
-Version:        0.8.9
+Version:        0.9.1
 Release:        1%{?dist}%{?extra_release}
 Summary:        Send a machine's storage and metadata to virt-p2v-server
 

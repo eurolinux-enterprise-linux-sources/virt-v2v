@@ -20,7 +20,6 @@ package Sys::VirtConvert::Converter::Windows;
 use strict;
 use warnings;
 
-use Carp qw(carp);
 use File::Spec;
 use File::Temp qw(tempdir);
 use Encode qw(encode decode);
@@ -46,7 +45,7 @@ Sys::VirtConvert::Converter::Windows - Pre-convert a Windows guest to run on KVM
 
  use Sys::VirtConvert::Converter;
 
- Sys::VirtConvert::Converter->convert($g, $config, $desc, $meta);
+ Sys::VirtConvert::Converter->convert($g, $root, $config, $meta, $options);
 
 =head1 DESCRIPTION
 
@@ -63,24 +62,21 @@ on KVM.
 
 =over
 
-=item Sys::VirtConvert::Converter::Windows->can_handle(desc)
+=item Sys::VirtConvert::Converter::Windows->can_handle(g, root)
 
-Return 1 if Sys::VirtConvert::Converter::Windows can convert the guest
-described by I<desc>, 0 otherwise.
+Return 1 if Sys::VirtConvert::Converter::Windows can convert the given guest.
 
 =cut
 
 sub can_handle
 {
     my $class = shift;
+    my ($g, $root) = @_;
 
-    my $desc = shift;
-    carp("can_handle called without desc argument") unless defined($desc);
-
-    return ($desc->{os} eq 'windows');
+    return ($g->inspect_get_type($root) eq 'windows');
 }
 
-=item Sys::VirtConvert::Converter::Windows->convert(g, root, config, desc, meta)
+=item Sys::VirtConvert::Converter::Windows->convert(g, root, config, meta, options)
 
 (Pre-)convert a Windows guest. Assume that can_handle has previously
 returned 1.
@@ -99,13 +95,13 @@ The root device of this operating system.
 
 An initialised Sys::VirtConvert::Config object.
 
-=item desc
-
-A description of the guest OS (see Sys::VirtConvert::Converter->convert).
-
 =item meta
 
-Guest metadata.
+Not used by the Windows converter
+
+=item options
+
+Not used by the Windows converter
 
 =back
 
@@ -115,21 +111,22 @@ sub convert
 {
     my $class = shift;
 
-    my ($g, $root, $config, $desc, undef) = @_;
-    croak("convert called without g argument") unless defined($g);
-    croak("convert called without root argument") unless defined($root);
-    croak("convert called without config argument") unless defined($config);
-    croak("convert called without desc argument") unless defined($desc);
+    my ($g, $root, $config, undef, undef) = @_;
 
     my $tmpdir = tempdir (CLEANUP => 1);
 
+    # Find the Windows system root
+    my $windir = $g->inspect_get_windows_systemroot($root);
+
     # Note: disks are already mounted by main virt-v2v script.
 
-    my $firstboot = _upload_files ($g, $tmpdir, $desc, $config);
+    my $firstboot = _upload_files ($g, $root, $windir, $tmpdir, $config);
 
     # Open the system and software hives
-    my ($sys_guest, $sys_local) = _download_hive($g, $tmpdir, 'system');
-    my ($soft_guest, $soft_local) = _download_hive($g, $tmpdir, 'software');
+    my ($sys_guest, $sys_local) = _download_hive($g, $windir,
+                                                 $tmpdir, 'system');
+    my ($soft_guest, $soft_local) = _download_hive($g, $windir,
+                                                   $tmpdir, 'software');
 
     my $h_sys = Win::Hivex->open ($sys_local, write => 1)
         or v2vdie __x('Failed to open {hive} hive: {error}',
@@ -147,8 +144,8 @@ sub convert
     _disable_processor_drivers($h_sys, $current_cs);
 
     my ($block, $net) =
-        _prepare_virtio_drivers($g, $desc, $config, $h_soft);
-    _add_viostor_to_registry($desc, $h_sys, $current_cs) if $block eq 'virtio';
+        _prepare_virtio_drivers($g, $root, $windir, $config, $h_soft);
+    _add_viostor_to_registry($g, $root, $h_sys, $current_cs) if $block eq 'virtio';
 
     # Commit and upload the modified registry hives
     $h_sys->commit(undef); undef $h_sys;
@@ -164,7 +161,7 @@ sub convert
 
     $guestcaps{block} = $block;
     $guestcaps{net}   = $net;
-    $guestcaps{arch}  = $desc->{arch};
+    $guestcaps{arch}  = $g->inspect_get_arch($root);
     $guestcaps{acpi}  = 1; # XXX
 
     # We want an i686 guest for i[345]86
@@ -176,6 +173,7 @@ sub convert
 sub _download_hive
 {
     my $g = shift;
+    my $windir = shift;
     my $tmpdir = shift;
     my $hive = lc(shift);
 
@@ -183,7 +181,7 @@ sub _download_hive
 
     my $guest;
     eval {
-        $guest = "/windows/system32/config/$hive";
+        $guest = "$windir/system32/config/$hive";
         $guest = $g->case_sensitive_path ($guest);
 
         # Retrieve the hive file unless we've already got it
@@ -200,9 +198,7 @@ sub _download_hive
 # See http://rwmj.wordpress.com/2010/04/30/tip-install-a-device-driver-in-a-windows-vm/
 sub _add_viostor_to_registry
 {
-    my $desc = shift;
-    my $h = shift;
-    my $current_cs = shift;
+    my ($g, $root, $h, $current_cs) = @_;
 
     # Make the changes.
     my $regedits = <<REGEDITS;
@@ -252,13 +248,14 @@ sub _add_viostor_to_registry
 REGEDITS
 
     my $io;
-    if ($desc->{major_version} == 5 || $desc->{major_version} == 6) {
+    my $major_version = $g->inspect_get_major_version($root);
+    if ($major_version == 5 || $major_version == 6) {
         $io = IO::String->new ($regedits);
     } else {
         v2vdie __x('Guest is not a supported version of Windows '.
                    '({major}.{minor})',
-                   major => $desc->{major_version},
-                   minor => $desc->{minor_version});
+                   major => $major_version,
+                   minor => $g->inspect_get_minor_version($root));
     }
 
     local *_map = sub {
@@ -311,20 +308,17 @@ REGEDITS
 # be searched automatically when automatically installing drivers.
 sub _prepare_virtio_drivers
 {
-    my $g = shift;
-    my $desc = shift;
-    my $config = shift;
-    my $h = shift;
+    my ($g, $root, $windir, $config, $h) = @_;
 
     # Copy the target VirtIO drivers to the guest
-    my $driverdir = File::Spec->catdir($g->case_sensitive_path("/windows"), "Drivers/VirtIO");
+    my $driverdir = File::Spec->catdir($g->case_sensitive_path($windir), "Drivers/VirtIO");
 
     $g->mkdir_p($driverdir);
 
     # Check for a virtio entry in the config file for this OS
     my $virtio;
     eval {
-        ($virtio) = $config->match_app ($desc, 'virtio', $desc->{arch});
+        ($virtio) = $config->match_app($g, $root, 'virtio', $g->inspect_get_arch($root));
     };
     if ($@) {
         my $block = 'ide';
@@ -422,13 +416,10 @@ sub _prepare_virtio_drivers
 # Returns 1 if RHEV APT is available, 0 otherwise.
 sub _upload_files
 {
-    my $g = shift;
-    my $tmpdir = shift;
-    my $desc = shift;
-    my $config = shift;
+    my ($g, $root, $windir, $tmpdir, $config) = @_;
 
     # Check we have virtio
-    my ($v_path) = $config->match_app ($desc, 'virtio', $desc->{arch});
+    my ($v_path) = $config->match_app($g, $root, 'virtio', $g->inspect_get_arch($root));
     my $v_local = $config->get_transfer_path($v_path);
 
     # We can't proceed if there are any files missing
@@ -440,13 +431,13 @@ sub _upload_files
 
     # Copy viostor directly into place as it's a critical boot device
     $g->cp (File::Spec->catfile($v_local, 'viostor.sys'),
-            $g->case_sensitive_path ("/windows/system32/drivers"));
+            $g->case_sensitive_path ("$windir/system32/drivers"));
 
     # Check if we have the files available to install firstboot
     my @fb_missing;
     my @fb_files;
     for my $file ("firstboot", "firstbootapp", "rhsrvany") {
-        my ($path) = $config->match_app ($desc, $file, $desc->{arch});
+        my ($path) = $config->match_app($g, $root, $file, $g->inspect_get_arch($root));
         my $local = $config->get_transfer_path($path);
 
         if (defined($local) && $g->exists($local)) {
@@ -470,12 +461,8 @@ sub _upload_files
     foreach my $d ('Temp', 'V2V') {
         $path .= '/'.$d;
 
-        eval { $path = $g->case_sensitive_path($path) };
-
-        # case_sensitive_path will fail if the path doesn't exist
-        if ($@) {
-            $g->mkdir($path);
-        }
+        $path = $g->case_sensitive_path($path);
+        $g->mkdir_p($path);
     }
 
     foreach my $file (@fb_files) {

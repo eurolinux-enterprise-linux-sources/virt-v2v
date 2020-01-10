@@ -1,0 +1,190 @@
+commit 49488e727866e4ac9f3aa365d787736a9a55a160
+Author: Matthew Booth <mbooth@redhat.com>
+Date:   Mon Sep 2 14:40:30 2013 +0100
+
+    build: Build rhsrvany from source
+    
+    We were previously bundling a prebuilt rhsrvany binary. This violated the GPL
+    license of rhsrvany, and did not provide a repeatable build. We now build it
+    from source with mingw.
+
+    MODIFIED to:
+    * remove patch of .gitmodules, which is not in the dist tarball
+    * remove delete of windows/rhsrvany.exe. Deleted manually in spec file
+
+diff --git a/Build.PL b/Build.PL
+index be63f17..55cee55 100644
+--- a/Build.PL
++++ b/Build.PL
+@@ -198,6 +198,39 @@ sub ACTION_changelog
+     return 0;
+ }
+ 
++# Build rhsrvany
++sub ACTION_rhsrvany_conf
++{
++    my $self = shift;
++
++    # Ensure we've initialised the rhsrvany submodule
++    $self->depends_on('submodules') == 0 or return 1;
++
++    unless ($self->up_to_date('rhsrvany/configure.ac', 'rhsrvany/configure')) {
++        $self->do_system('sh', '-c', 'cd rhsrvany && autoreconf -i')
++            or return 1;
++    }
++
++    return 0;
++}
++
++sub ACTION_rhsrvany
++{
++    my $self = shift;
++
++    $self->depends_on('rhsrvany_conf') == 0 or return 1;
++
++    unless ($self->up_to_date('rhsrvany/configure', 'rhsrvany/Makefile')) {
++        $self->do_system('sh', '-c', 'cd rhsrvany && mingw32-configure')
++            or return 1;
++    }
++
++    $self->do_system($self->config('make'), '-C', 'rhsrvany')
++        or return 1;
++
++    return 0;
++}
++
+ # Create all generated files
+ sub ACTION_generated
+ {
+@@ -224,6 +257,9 @@ sub ACTION_generated
+     print $ks "VERSION=$version\n";
+     close($ks) or return 1;
+ 
++    # Ensure we've run autoreconf in rhsrvany to remove dep on autotools
++    $self->depends_on('rhsrvany_conf') == 0 or return 1;
++
+     return 0;
+ }
+ 
+@@ -287,10 +323,23 @@ my $build = $class->new (
+         },
+     },
+     syntaxcheck_exclude => [ "COPYING", "COPYING.LIB", "README-NLS",
+-                             "windows/rhsrvany.exe", "po/*.po" ],
++                             "po/*.po",
++                             "rhsrvany/aclocal.m4",
++                             "rhsrvany/config.guess",
++                             "rhsrvany/config.sub",
++                             "rhsrvany/configure",
++                             "rhsrvany/install-sh",
++                             "rhsrvany/Makefile.in",
++                             "rhsrvany/RHSrvAny/Makefile.in",
++                             "rhsrvany/RHSrvAny/RHSrvAnyInfo.rc",
++                             "rhsrvany/RHSrvAny/RHSrvAny.mc",
++                             "rhsrvany/RHSrvAny/RHSrvAny.vcproj",
++                             "rhsrvany/RHSrvAny.sln",
++                              ],
+     PL_files => [ 'virt-v2v.spec.PL', 'rubygem-virt-p2v.spec.PL' ],
+ );
+ 
+ $build->add_build_element('confdoc');
+ $build->add_build_element('locale');
++$build->add_build_element('rhsrvany');
+ $build->create_build_script();
+diff --git a/MANIFEST b/MANIFEST
+index f588354..3724fde 100644
+--- a/MANIFEST
++++ b/MANIFEST
+@@ -88,6 +88,28 @@ po/virt-v2v.pot
+ po/zh_CN.po
+ po/zh_TW.po
+ README-NLS
++rhsrvany/aclocal.m4
++rhsrvany/config.guess
++rhsrvany/config.h.in
++rhsrvany/config.sub
++rhsrvany/configure
++rhsrvany/configure.ac
++rhsrvany/depcomp
++rhsrvany/install-sh
++rhsrvany/Makefile.am
++rhsrvany/Makefile.in
++rhsrvany/missing
++rhsrvany/README
++rhsrvany/RHSrvAny.sln
++rhsrvany/RHSrvAny/Makefile.am
++rhsrvany/RHSrvAny/Makefile.in
++rhsrvany/RHSrvAny/mc.bat
++rhsrvany/RHSrvAny/resource.h
++rhsrvany/RHSrvAny/RHSrvAny.c
++rhsrvany/RHSrvAny/RHSrvAny.h
++rhsrvany/RHSrvAny/RHSrvAny.mc
++rhsrvany/RHSrvAny/RHSrvAny.vcproj
++rhsrvany/RHSrvAny/RHSrvAnyInfo.rc
+ rubygem-virt-p2v.spec
+ rubygem-virt-p2v.spec.PL
+ run
+@@ -103,4 +125,3 @@ v2v/virt-v2v.pl
+ virt-v2v.spec
+ virt-v2v.spec.PL
+ windows/README.txt
+-windows/rhsrvany.exe
+diff --git a/MANIFEST.SKIP b/MANIFEST.SKIP
+index af4bd84..a5bae48 100644
+--- a/MANIFEST.SKIP
++++ b/MANIFEST.SKIP
+@@ -38,3 +38,7 @@ p2v/client/tmp
+ 
+ # ISO file created when running image-builder in the build tree
+ ^p2v/image-builder/Virt-P2V.iso
++
++# Non-essential build files
++^rhsrvany/autom4te.cache/
++^rhsrvany/.git$
+diff --git a/rhsrvany b/rhsrvany
+new file mode 160000
+index 0000000..9cb29d2
+--- /dev/null
++++ b/rhsrvany
+@@ -0,0 +1 @@
++Subproject commit 9cb29d2b5ed5a15d678f16eb2fbe0ab37f6c59a9
+diff --git a/virt-v2v.spec.PL b/virt-v2v.spec.PL
+index 49a9d3e..1e6dd69 100644
+--- a/virt-v2v.spec.PL
++++ b/virt-v2v.spec.PL
+@@ -71,6 +71,7 @@ BuildRequires:  perl(Module::Pluggable)
+ BuildRequires:  perl(Net::HTTPS)
+ BuildRequires:  perl(Net::SSL)
+ BuildRequires:  perl(Sys::Guestfs)
++BuildRequires:  perl(Sys::Syslog)
+ BuildRequires:  perl(Sys::Virt)
+ BuildRequires:  perl(Term::ProgressBar)
+ BuildRequires:  perl(URI)
+@@ -80,6 +81,10 @@ BuildRequires:  perl(XML::DOM::XPath)
+ BuildRequires:  perl-Sys-Guestfs >= 1:1.14.0
+ BuildRequires:  perl-hivex >= 1.2.2
+ 
++# For building rhsrvany
++BuildRequires:  mingw32-filesystem
++BuildRequires:  mingw32-gcc
++
+ Requires:  perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
+ 
+ # Required for the name optional argument to add_drive_opts
+@@ -122,6 +127,7 @@ variety of guest operating systems from libvirt-managed hosts and VMware ESX.
+ %build
+ %{__perl} Build.PL
+ ./Build
++./Build rhsrvany
+ 
+ # perl doesn't need debuginfo
+ %define debug_package %{nil}
+@@ -143,7 +149,7 @@ mkdir -p $statedir/software
+ windir=$statedir/software/windows
+ mkdir -p $windir
+ 
+-cp windows/rhsrvany.exe $windir/
++cp rhsrvany/RHSrvAny/rhsrvany.exe $windir/
+ 
+ mkdir -p %{buildroot}%{_sysconfdir}
+ cp v2v/virt-v2v.conf %{buildroot}%{_sysconfdir}/

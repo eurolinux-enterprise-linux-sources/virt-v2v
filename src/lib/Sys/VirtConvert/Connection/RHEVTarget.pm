@@ -386,7 +386,7 @@ use POSIX;
 use Time::gmtime;
 
 use Sys::VirtConvert::ExecHelper;
-use Sys::VirtConvert::Util qw(:DEFAULT rhev_helper rhev_ids);
+use Sys::VirtConvert::Util qw(:DEFAULT rhev_helper rhev_ids scsi_first_cmp);
 
 use Locale::TextDomain 'virt-v2v';
 
@@ -853,12 +853,7 @@ sub _get_os_type_windows
         # The only 32 bit Windows 6.1 is Windows 7
         return "Windows7" if length($arch_suffix) == 0;
 
-        # This API is new in libguestfs 1.10
-        # If it's not present, we can't differentiate between Win7 and Win2k8r2
-        # for amd64
-        if (defined($g->can('inspect_get_product_variant')) &&
-            $g->inspect_get_product_variant($root) eq 'Client')
-        {
+        if ($g->inspect_get_product_variant($root) eq 'Client') {
             return "Windows7".$arch_suffix;
         }
 
@@ -1009,7 +1004,7 @@ sub _disks
 
     my $driveno = 1;
 
-    foreach my $disk (@{$meta->{disks}}) {
+    foreach my $disk (sort { scsi_first_cmp($a->{device}, $b->{device}) } @{$meta->{disks}}) {
         my $path = $disk->{dst}->get_path();
         my $vol = Sys::VirtConvert::Connection::RHEVTarget::Vol->_get_by_path
             ($path);
@@ -1039,7 +1034,7 @@ sub _disks
         $diske->setAttribute('ovf:actual_size', $usage_gb);
         $diske->setAttribute('ovf:fileRef', $fileref);
         $diske->setAttribute('ovf:parentRef', '');
-        $diske->setAttribute('ovf:vm_snapshot_id', get_uuid());
+        $diske->setAttribute('ovf:vm_snapshot_id', rhev_util::get_uuid());
         $diske->setAttribute('ovf:volume-format', $vol->_get_rhev_format());
         $diske->setAttribute('ovf:volume-type', $vol->_get_rhev_type());
         $diske->setAttribute('ovf:format', 'http://en.wikipedia.org/wiki/Byte');
